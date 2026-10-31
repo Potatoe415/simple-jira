@@ -3,7 +3,7 @@ import type { Ticket } from "@simple-jira/core";
 import { addEvent } from "@simple-jira/core";
 import { config } from "./config";
 import { db } from "./db";
-import { run } from "./exec";
+import { gh, run } from "./exec";
 import { processTicket } from "./pipeline";
 
 let currentTicketId: string | null = null;
@@ -22,9 +22,13 @@ async function heartbeat() {
 }
 
 async function preflight() {
+  try {
+    console.log(`GitHub : connecté en tant que ${await gh(["api", "user", "--jq", ".login"], process.cwd())}`);
+  } catch (error) {
+    console.warn(`⚠ GitHub inaccessible (git credential manager ou gh auth login) : ${(error as Error).message}`);
+  }
   for (const [command, args] of [
     ["git", ["--version"]],
-    ["gh", ["auth", "status"]],
     [config.claudeBin, ["--version"]],
   ] as const) {
     const result = await run(command, [...args], { cwd: process.cwd(), claudeAuth: true, timeoutMs: 30_000 }).catch(

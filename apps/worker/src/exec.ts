@@ -7,6 +7,7 @@ export interface RunOptions {
   cwd: string;
   shell?: boolean;
   claudeAuth?: boolean;
+  extraEnv?: Record<string, string>;
   input?: string;
   timeoutMs?: number;
   signal?: AbortSignal;
@@ -42,7 +43,7 @@ export function run(command: string, args: string[], options: RunOptions): Promi
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
-      env: childEnv(options.claudeAuth ?? false),
+      env: { ...childEnv(options.claudeAuth ?? false), ...options.extraEnv },
       shell: options.shell ?? false,
       detached: process.platform !== "win32",
       windowsHide: true,
@@ -115,5 +116,28 @@ export async function runChecked(command: string, args: string[], options: RunOp
 export const git = (args: string[], cwd: string, signal?: AbortSignal) =>
   runChecked("git", args, { cwd, signal, timeoutMs: 10 * 60_000 });
 
-export const gh = (args: string[], cwd: string, signal?: AbortSignal) =>
-  runChecked("gh", args, { cwd, signal, timeoutMs: 5 * 60_000 });
+let githubToken: string | null = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || null;
+
+// Reuses the Git Credential Manager login so `gh` works without a separate `gh auth login`.
+export async function resolveGithubToken(): Promise<string | null> {
+  if (githubToken) return githubToken;
+  const result = await run("git", ["credential", "fill"], {
+    cwd: process.cwd(),
+    input: "protocol=https\nhost=github.com\n\n",
+    timeoutMs: 30_000,
+    extraEnv: { GCM_INTERACTIVE: "never", GIT_TERMINAL_PROMPT: "0" },
+  });
+  const line = result.stdout.split(/\r?\n/).find((entry) => entry.startsWith("password="));
+  githubToken = line ? line.slice("password=".length).trim() || null : null;
+  return githubToken;
+}
+
+export async function gh(args: string[], cwd: string, signal?: AbortSignal) {
+  const token = await resolveGithubToken();
+  return runChecked("gh", args, {
+    cwd,
+    signal,
+    timeoutMs: 5 * 60_000,
+    extraEnv: token ? { GH_TOKEN: token } : undefined,
+  });
+}
