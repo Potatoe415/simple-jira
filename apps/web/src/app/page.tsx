@@ -26,7 +26,12 @@ export default async function DashboardPage() {
     getWorkerStatus(db),
     listProjects(db),
   ]);
-  const working = active.filter((ticket) => ticket.status !== "blocked");
+  const working = active
+    .filter((ticket) => ticket.status !== "blocked")
+    .sort((a, b) => {
+      const inProgress = Number(b.status !== "queued") - Number(a.status !== "queued");
+      return inProgress || a.priority - b.priority || a.created_at.localeCompare(b.created_at);
+    });
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">

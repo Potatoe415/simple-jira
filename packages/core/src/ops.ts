@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createTicketSchema,
+  prioritySchema,
   projectSchema,
   slugify,
   type CreateTicketInput,
@@ -86,6 +87,7 @@ export async function createTicket(db: Db, input: CreateTicketInput): Promise<Ti
       goal: values.goal || null,
       steps: values.steps,
       auto_merge: values.auto_merge,
+      priority: values.priority,
       new_project: values.type === "new_project" ? values.new_project : null,
       source: values.source,
     })
@@ -201,6 +203,19 @@ export async function retryTicket(db: Db, ticketId: string): Promise<void> {
   if (error) fail("retryTicket", error);
   if (!data.length) throw new Error("Seul un ticket en échec ou annulé peut être relancé");
   await addEvent(db, ticketId, "status", "Relance demandée");
+}
+
+export async function setPriority(db: Db, ticketId: string, priority: number): Promise<void> {
+  const value = prioritySchema.parse(priority);
+  const { data, error } = await db
+    .from("tickets")
+    .update({ priority: value })
+    .eq("id", ticketId)
+    .in("status", [...ACTIVE_STATUSES])
+    .select("id");
+  if (error) fail("setPriority", error);
+  if (!data.length) throw new Error("La priorité ne change que pour un ticket encore actif");
+  await addEvent(db, ticketId, "status", `Priorité ${value}`);
 }
 
 export async function requestMerge(db: Db, ticketId: string): Promise<void> {

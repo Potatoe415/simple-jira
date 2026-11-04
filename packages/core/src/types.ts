@@ -16,6 +16,10 @@ export type TicketStatus = (typeof TICKET_STATUSES)[number];
 export const ACTIVE_STATUSES: readonly TicketStatus[] = ["queued", "running", "blocked", "verifying"];
 export const FINAL_STATUSES: readonly TicketStatus[] = ["delivered", "merged", "failed", "cancelled"];
 
+export const PRIORITIES = [1, 2, 3] as const;
+export type Priority = (typeof PRIORITIES)[number];
+export const DEFAULT_PRIORITY: Priority = 3;
+
 export type EventKind = "status" | "agent" | "tool" | "verify" | "error" | "info";
 
 export interface NewProjectSpec {
@@ -52,6 +56,7 @@ export interface Ticket {
   slug: string | null;
   goal: string | null;
   steps: string[];
+  priority: Priority;
   auto_merge: boolean;
   new_project: NewProjectSpec | null;
   status: TicketStatus;

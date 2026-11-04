@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { TICKET_TYPES } from "./types";
+import { DEFAULT_PRIORITY, TICKET_TYPES, type Priority } from "./types";
+
+export const prioritySchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(3)
+  .transform((value) => value as Priority);
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
 export const TASK_SLUG_RE = /^[a-z0-9][a-z0-9-]{0,47}$/;
@@ -37,6 +44,7 @@ export const createTicketSchema = z
     goal: z.string().trim().max(4000).optional(),
     steps: lines.default([]),
     auto_merge: z.boolean().default(false),
+    priority: prioritySchema.default(DEFAULT_PRIORITY),
     new_project: newProjectSpecSchema.optional(),
     source: z.enum(["mcp", "dashboard"]).default("dashboard"),
   })

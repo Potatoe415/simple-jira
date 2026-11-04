@@ -1,4 +1,4 @@
-import { STATUS_LABELS, type TicketStatus } from "@simple-jira/core";
+import { STATUS_LABELS, type Priority, type TicketStatus } from "@simple-jira/core";
 
 const COLORS: Record<TicketStatus, string> = {
   queued: "bg-zinc-700 text-zinc-200",
@@ -10,6 +10,24 @@ const COLORS: Record<TicketStatus, string> = {
   failed: "bg-red-900 text-red-200",
   cancelled: "bg-zinc-800 text-zinc-400",
 };
+
+const PRIORITY_COLORS: Record<Priority, string> = {
+  1: "bg-red-600 text-white",
+  2: "bg-orange-800 text-orange-100",
+  3: "",
+};
+
+export function PriorityBadge({ priority }: { priority: Priority }) {
+  if (priority === 3) return null;
+  return (
+    <span
+      className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${PRIORITY_COLORS[priority]}`}
+      title={`Priorité ${priority}`}
+    >
+      P{priority}
+    </span>
+  );
+}
 
 export function StatusBadge({ status }: { status: TicketStatus }) {
   return (

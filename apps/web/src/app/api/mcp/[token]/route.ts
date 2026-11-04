@@ -12,6 +12,7 @@ import {
   listTickets,
   requestMerge,
   retryTicket,
+  setPriority,
   STATUS_LABELS,
   TICKET_TYPES,
   TYPE_LABELS,
@@ -29,6 +30,7 @@ const INSTRUCTIONS = `simple-jira transforme des demandes dictées en tickets ex
 - goal : une ou deux phrases qui décrivent "fini" de façon vérifiable.
 - steps : 3 à 10 étapes petites, concrètes, vérifiables, dans l'ordre, en anglais. N'inclus pas la lecture des docs du projet, la commande de vérification ni le commit/push : le worker les ajoute.
 - slug : 2 à 4 mots en kebab-case anglais, il sert de nom de branche (feat/<slug>).
+- priority : 3 par défaut. 1 si l'utilisateur dit "priorité un", "urgent", "en premier" ; 2 s'il dit "priorité deux". Les tickets en file passent par priorité (1 d'abord), puis par ancienneté ; un ticket déjà en cours n'est pas interrompu. Pour un ticket existant, utilise set_priority.
 - auto_merge : true uniquement si l'utilisateur dit explicitement "direct en prod", "mets en prod", "merge direct" ou équivalent. Sinon false : la PR attend sa validation.
 - Quand l'utilisateur demande s'il y a des questions ou des nouvelles, appelle list_open_questions puis list_tickets.
 - Pour répondre à une question d'un agent, appelle answer_question avec la réponse de l'utilisateur, sans la reformuler au point d'en changer le sens.`;
@@ -45,7 +47,7 @@ function ticketLine(ticket: TicketWithProject) {
   const project = ticket.project?.name ?? ticket.new_project?.name ?? "?";
   const pr = ticket.pr_url ? ` — PR ${ticket.pr_url}` : "";
   const preview = ticket.preview_url ? ` — preview ${ticket.preview_url}` : "";
-  return `#${ticket.number} [${STATUS_LABELS[ticket.status]}] ${project} — ${ticket.title}${pr}${preview}`;
+  return `#${ticket.number} P${ticket.priority} [${STATUS_LABELS[ticket.status]}] ${project} — ${ticket.title}${pr}${preview}`;
 }
 
 const handler = createMcpHandler(
@@ -100,6 +102,13 @@ const handler = createMcpHandler(
             .boolean()
             .default(false)
             .describe("true seulement si l'utilisateur dit explicitement de mettre direct en prod"),
+          priority: z
+            .number()
+            .int()
+            .min(1)
+            .max(3)
+            .default(3)
+            .describe("1 = urgent, passe avant les autres ; 3 = défaut. 1 ou 2 seulement si l'utilisateur le demande"),
           new_project: z
             .object({
               slug: z.string().describe("minuscules, chiffres et tirets, servira de nom de repo"),
@@ -114,7 +123,7 @@ const handler = createMcpHandler(
           const ticket = await createTicket(adminDb(), { ...input, source: "mcp" });
           const delivery = ticket.auto_merge ? "mergé direct en prod une fois livré" : "livré en PR à valider";
           return text(
-            `Ticket #${ticket.number} créé (${TYPE_LABELS[ticket.type]}) : ${ticket.title}. En file, le worker le prendra dans les 5 minutes ; ${delivery}.`,
+            `Ticket #${ticket.number} créé (${TYPE_LABELS[ticket.type]}, priorité ${ticket.priority}) : ${ticket.title}. En file, le worker le prendra dans les 5 minutes ; ${delivery}.`,
           );
         } catch (error) {
           return failure(error);
@@ -234,6 +243,30 @@ const handler = createMcpHandler(
           if (!ticket) return failure(new Error(`Ticket #${number} introuvable`));
           await cancelTicket(db, ticket.id);
           return text(`Ticket #${number} annulé.`);
+        } catch (error) {
+          return failure(error);
+        }
+      },
+    );
+
+    server.registerTool(
+      "set_priority",
+      {
+        title: "Changer la priorité",
+        description:
+          "Change la priorité d'un ticket encore actif : 1 = urgent (passe en premier dans la file), 2, 3 = défaut. Ne coupe pas un ticket déjà en cours.",
+        inputSchema: z.object({
+          number: z.number().int().positive(),
+          priority: z.number().int().min(1).max(3),
+        }),
+      },
+      async ({ number, priority }) => {
+        try {
+          const db = adminDb();
+          const ticket = await getTicketByNumber(db, number);
+          if (!ticket) return failure(new Error(`Ticket #${number} introuvable`));
+          await setPriority(db, ticket.id, priority);
+          return text(`Ticket #${number} en priorité ${priority}.`);
         } catch (error) {
           return failure(error);
         }

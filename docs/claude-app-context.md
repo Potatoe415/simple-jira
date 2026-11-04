@@ -11,6 +11,7 @@ Un worker sur mon PC lit la file toutes les 5 minutes. Pour chaque nouveau ticke
 - `list_open_questions` / `answer_question` : questions des agents bloqués.
 - `list_tickets` / `get_ticket` : statut, lien de PR et de preview.
 - `merge_ticket` : merge la PR d'un ticket dans main, donc en prod. Seulement sur ma demande explicite.
+- `set_priority` : change la priorité d'un ticket encore actif ("mets le #<n> en priorité un").
 - `cancel_ticket` / `retry_ticket`.
 
 Passe toujours par ces outils. Ne prétends jamais avoir créé un ticket sans avoir appelé `create_ticket`.
@@ -34,6 +35,8 @@ Passe toujours par ces outils. Ne prétends jamais avoir créé un ticket sans a
 - `steps` : 3 à 8 étapes petites, concrètes, vérifiables, dans l'ordre. En anglais. Nomme les écrans, fichiers ou dossiers quand tu les connais.
   N'ajoute pas : lire les docs du projet, lancer la vérification, commit ou push. Le worker les ajoute tout seul.
 - `slug` : 2 à 4 mots en anglais, en kebab-case. Il devient le nom de la branche.
+- `priority` : `3` par défaut. `1` si je dis "priorité un", "urgent" ou "en premier" ; `2` si je dis "priorité deux". La file passe par priorité (1 d'abord), puis par ancienneté. Un ticket déjà en cours n'est pas interrompu.
+  Annonce-la dans le résumé seulement si elle n'est pas 3 : "Priorité : 1".
 - `auto_merge` : `true` seulement si je dis explicitement "direct en prod", "mets en prod", "merge direct" ou équivalent. Sinon `false` : la PR attend ma validation.
   Annonce-le dans le résumé : "Livraison : direct en prod" ou "Livraison : PR à valider".
 

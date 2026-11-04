@@ -7,6 +7,7 @@ import {
   requestMerge,
   retryTicket,
   saveProject,
+  setPriority,
   type TicketType,
 } from "@simple-jira/core";
 import { revalidatePath } from "next/cache";
@@ -52,6 +53,7 @@ export async function createTicketAction(_: ActionState, form: FormData): Promis
       goal: field(form, "goal") || undefined,
       steps: lines(form, "steps"),
       auto_merge: form.get("auto_merge") === "on",
+      priority: Number(field(form, "priority") || 3) as 1 | 2 | 3,
       new_project: isNew
         ? { slug: field(form, "new_slug"), name: field(form, "new_name"), description: field(form, "description") }
         : undefined,
@@ -80,6 +82,12 @@ export async function answerQuestionAction(_: ActionState, form: FormData): Prom
 export async function cancelTicketAction(form: FormData) {
   await requireOwner();
   await cancelTicket(adminDb(), field(form, "ticket_id"));
+  revalidatePath("/", "layout");
+}
+
+export async function setPriorityAction(form: FormData) {
+  await requireOwner();
+  await setPriority(adminDb(), field(form, "ticket_id"), Number(field(form, "priority")));
   revalidatePath("/", "layout");
 }
 

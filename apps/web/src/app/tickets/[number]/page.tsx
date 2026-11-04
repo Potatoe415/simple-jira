@@ -8,7 +8,7 @@ import {
   type EventKind,
 } from "@simple-jira/core";
 import { notFound } from "next/navigation";
-import { cancelTicketAction, retryTicketAction } from "@/app/actions";
+import { cancelTicketAction, retryTicketAction, setPriorityAction } from "@/app/actions";
 import { AnswerForm } from "@/components/answer-form";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { Header } from "@/components/header";
@@ -92,6 +92,24 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
         <div>
           <dt className="label">Livraison</dt>
           <dd>{ticket.auto_merge ? "Direct en prod" : "PR à valider"}</dd>
+        </div>
+        <div>
+          <dt className="label">Priorité</dt>
+          <dd>
+            {isActive ? (
+              <form action={setPriorityAction} className="flex items-center gap-2">
+                <input type="hidden" name="ticket_id" value={ticket.id} />
+                <select name="priority" defaultValue={String(ticket.priority)} className="input w-auto py-1">
+                  <option value="1">1 : urgent</option>
+                  <option value="2">2</option>
+                  <option value="3">3 : normal</option>
+                </select>
+                <button className="btn-ghost py-1 text-xs">OK</button>
+              </form>
+            ) : (
+              ticket.priority
+            )}
+          </dd>
         </div>
         {ticket.branch && (
           <div className="col-span-2">
