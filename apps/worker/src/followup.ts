@@ -1,6 +1,15 @@
+import { existsSync, writeFileSync } from "node:fs";
 import { addEvent, getProject, updateTicket, type Project, type Ticket } from "@simple-jira/core";
 import { db } from "./db";
-import { gh } from "./exec";
+import { gh, git, resolveGithubToken, run } from "./exec";
+import { createLogger, type TicketLogger } from "./logger";
+import { conflictStep, renderTask, reopenForConflict } from "./task-file";
+import { reattachWorktree, taskPath } from "./workspace";
+
+async function githubEnv(): Promise<Record<string, string> | undefined> {
+  const token = await resolveGithubToken();
+  return token ? { GH_TOKEN: token } : undefined;
+}
 
 type Delivered = Pick<Ticket, "id" | "number" | "branch" | "pr_url" | "project_id">;
 
@@ -53,24 +62,86 @@ async function fillPreviews() {
   }
 }
 
+async function squashSubject(prUrl: string): Promise<string> {
+  return gh(
+    [
+      "pr",
+      "view",
+      prUrl,
+      "--json",
+      "commits,title",
+      "--jq",
+      '([.commits[].messageHeadline | select(startswith("Merge ") | not)][0]) // .title',
+    ],
+    process.cwd(),
+  );
+}
+
+// main moved on: bring it into the branch; hand real conflicts to the agent on the same branch.
+async function handleConflict(ticket: Ticket, log: TicketLogger): Promise<"retry" | "requeued"> {
+  const project = await getProject(db, ticket.project_id!);
+  const signal = new AbortController().signal;
+  const worktree =
+    ticket.worktree_path && existsSync(ticket.worktree_path)
+      ? ticket.worktree_path
+      : await reattachWorktree(project, ticket.branch!, log, signal);
+
+  await git(["fetch", "origin", project.default_branch], worktree);
+  const merge = await run("git", ["merge", "--no-edit", `origin/${project.default_branch}`], { cwd: worktree });
+  if (merge.code === 0) {
+    await git(["push", "origin", `HEAD:refs/heads/${ticket.branch}`], worktree);
+    log.status(`main intégré dans ${ticket.branch} sans conflit : nouvel essai de merge`);
+    await updateTicket(db, ticket.id, { worktree_path: worktree });
+    return "retry";
+  }
+
+  const files = (await git(["diff", "--name-only", "--diff-filter=U"], worktree)).split(/\r?\n/).filter(Boolean);
+  const step = conflictStep(files, project.default_branch);
+  const task = taskPath(worktree);
+  if (existsSync(task)) {
+    reopenForConflict(task, step);
+  } else {
+    const goal = `The branch merges cleanly with origin/${project.default_branch}, keeps the ticket's changes, and the check passes.`;
+    writeFileSync(task, renderTask(ticket, project, ticket.branch!, { goal, steps: [step] }), "utf8");
+  }
+  await updateTicket(db, ticket.id, { status: "queued", worktree_path: worktree, verify_attempts: 0 });
+  log.status(`Conflit avec main dans ${files.join(", ")} : l'agent va le résoudre, puis le merge repartira`);
+  return "requeued";
+}
+
 async function runMerges() {
   const { data, error } = await db
     .from("tickets")
-    .select("id, number, branch, pr_url, project_id")
+    .select("*")
     .eq("status", "delivered")
     .not("merge_requested_at", "is", null)
     .is("merged_at", null);
   if (error) throw new Error(`merges: ${error.message}`);
-  for (const ticket of data as Delivered[]) {
+  for (const ticket of data as Ticket[]) {
     if (!ticket.pr_url) continue;
+    const log = createLogger(ticket.id, ticket.number);
     try {
-      await gh(["pr", "merge", ticket.pr_url, "--rebase"], process.cwd());
-      await updateTicket(db, ticket.id, { status: "merged", merged_at: new Date().toISOString() });
-      await addEvent(db, ticket.id, "status", "Mergé dans main : Vercel déploie en prod");
-      console.log(`[#${ticket.number}] mergé`);
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const result = await run(
+          "gh",
+          ["pr", "merge", ticket.pr_url, "--squash", "--subject", await squashSubject(ticket.pr_url)],
+          { cwd: process.cwd(), extraEnv: await githubEnv() },
+        );
+        if (result.code === 0) {
+          await updateTicket(db, ticket.id, { status: "merged", merged_at: new Date().toISOString() });
+          log.status("Mergé dans main : Vercel déploie en prod");
+          break;
+        }
+        if (!/conflict|not mergeable/i.test(result.output) || attempt > 0) {
+          throw new Error(result.output.trim().slice(-1500));
+        }
+        if ((await handleConflict(ticket, log)) === "requeued") break;
+      }
     } catch (mergeError) {
       await updateTicket(db, ticket.id, { merge_requested_at: null });
-      await addEvent(db, ticket.id, "error", `Merge refusé : ${(mergeError as Error).message}`);
+      log.error(`Merge refusé : ${(mergeError as Error).message}`);
+    } finally {
+      await log.flush();
     }
   }
 }

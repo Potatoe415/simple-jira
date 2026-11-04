@@ -56,6 +56,31 @@ export async function createWorktree(
   log.status(`Worktree ${path} sur ${branch} depuis origin/${project.default_branch}`);
   await git(["fetch", "origin", project.default_branch], repo, signal);
   await git(["worktree", "add", "-b", branch, path, `origin/${project.default_branch}`], repo, signal);
+  await finishSetup(project, path, log, signal);
+  return { path, branch };
+}
+
+// Worktree for a branch that already exists (a delivered ticket whose worktree was cleaned up).
+export async function reattachWorktree(
+  project: Project,
+  branch: string,
+  log: TicketLogger,
+  signal: AbortSignal,
+): Promise<string> {
+  const repo = project.local_path;
+  const path = join(dirname(repo), `${basename(repo)}-${branch.split("/").pop()}`);
+  if (existsSync(path)) throw new Error(`Le dossier ${path} existe déjà`);
+  await git(["fetch", "origin", branch], repo, signal);
+  const local = (await run("git", ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`], { cwd: repo })).code === 0;
+  await git(local ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path, `origin/${branch}`], repo, signal);
+  if (local) await git(["reset", "--hard", `origin/${branch}`], path, signal);
+  log.status(`Worktree ${path} recréé sur ${branch}`);
+  await finishSetup(project, path, log, signal);
+  return path;
+}
+
+async function finishSetup(project: Project, path: string, log: TicketLogger, signal: AbortSignal) {
+  const repo = project.local_path;
   await excludeTaskFile(repo);
 
   const modules = join(repo, "node_modules");
@@ -78,8 +103,16 @@ export async function createWorktree(
     mkdirSync(dirname(join(path, file)), { recursive: true });
     copyFileSync(source, join(path, file));
   }
+}
 
-  return { path, branch };
+const NOISE = /^(npm (warn|notice)|>\s|\s*$|.*potentially fixable with the `--fix` option)/;
+
+// Keeps the lines that explain a failure: drops npm warnings and script banners, errors first.
+export function failureSummary(output: string, max = 3000): string {
+  const lines = output.split(/\r?\n/).filter((line) => !NOISE.test(line));
+  const important = lines.filter((line) => /error|✖|✗|\[warn\]|failed|not found|cannot/i.test(line));
+  const text = [...important, ...(important.length ? ["---"] : []), ...lines.slice(-40)].join("\n");
+  return text.length > max ? text.slice(-max) : text;
 }
 
 // The junction must go first: removing the worktree through it deletes the real node_modules.
@@ -114,8 +147,9 @@ export async function runCommands(
     const seconds = Math.round((Date.now() - started) / 1000);
     if (result.code !== 0 || result.timedOut) {
       const reason = result.timedOut ? "timeout" : `code ${result.code}`;
-      log.verify(`✗ ${command} (${reason}, ${seconds}s)\n${result.output.trim().slice(-4000)}`);
-      return { ok: false, output: `$ ${command} (${reason})\n${result.output.trim()}` };
+      const summary = failureSummary(result.output);
+      log.verify(`✗ ${command} (${reason}, ${seconds}s)\n${summary}`);
+      return { ok: false, output: `$ ${command} (${reason})\n${summary}` };
     }
     log.verify(`✓ ${command} (${seconds}s)`);
   }

@@ -27,6 +27,8 @@ import { createWorktree, runCommands, taskPath } from "./workspace";
 
 const now = () => new Date().toISOString();
 
+const NETWORK_ERROR = /API Error|ECONNREFUSED|Connection refused|ETIMEDOUT|ENOTFOUND|getaddrinfo|socket hang up/i;
+
 class Stop extends Error {}
 
 export async function processTicket(ticket: Ticket): Promise<void> {
@@ -101,7 +103,7 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
       const baseline = await runCommands(project.verify_commands, worktree, log, signal);
       if (!baseline.ok) {
         throw new Error(
-          `La vérification échoue déjà sur la copie intacte : l'agent perdrait ses runs sur des erreurs qui ne sont pas les siennes.\n${baseline.output.slice(-3000)}`,
+          `${project.default_branch} est déjà cassé : la vérification échoue sur la copie intacte, avant toute modification. Répare ${project.default_branch} puis clique Relancer.\n${baseline.output}`,
         );
       }
     }
@@ -121,6 +123,12 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
       const result = await runRunner(worktree, log, signal);
       signal.throwIfAborted();
       if (result.timedOut) throw new Error(`Runner arrêté après ${config.runnerTimeoutMs / 60_000} min`);
+      const progressed = taskState(readTask(task));
+      if (!progressed.status && progressed.done === before.done && NETWORK_ERROR.test(result.output)) {
+        throw new Error(
+          "Claude Code n'a pas pu joindre son API (réseau, VPN ou proxy du gateway). Rien n'a été modifié : rétablis la connexion puis clique Relancer.",
+        );
+      }
     }
 
     const after = taskState(readTask(task));
@@ -149,10 +157,10 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
         pr_url: prUrl,
         summary: [notes, diffStat && `\`\`\`\n${diffStat}\n\`\`\``].filter(Boolean).join("\n\n") || null,
         finished_at: now(),
-        merge_requested_at: ticket.auto_merge ? now() : null,
+        merge_requested_at: ticket.auto_merge || ticket.merge_requested_at ? now() : null,
       });
       log.status(`Livré : ${prUrl} (worktree conservé : ${worktree})`);
-      if (ticket.auto_merge) log.status("Direct en prod demandé : merge automatique");
+      if (ticket.auto_merge || ticket.merge_requested_at) log.status("Merge en prod demandé : il part automatiquement");
       return;
     }
 

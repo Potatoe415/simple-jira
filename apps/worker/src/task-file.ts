@@ -27,10 +27,20 @@ function shipStep(project: Project, branch: string) {
   return `Ship: ${how}. It must push the feature branch \`${branch}\`, never main.`;
 }
 
-export function renderTask(ticket: Ticket, project: Project, branch: string): string {
+export function conflictStep(files: string[], base: string): string {
+  return `A merge of \`origin/${base}\` into this branch is in progress (started by simple-jira) and conflicts in: ${files.map((f) => `\`${f}\``).join(", ")}. Resolve every conflict keeping the intent of both sides, do not abort or redo the merge, and leave no conflict markers. The ship commit concludes the merge.`;
+}
+
+export function renderTask(
+  ticket: Ticket,
+  project: Project,
+  branch: string,
+  override?: { goal: string; steps: string[] },
+): string {
+  const taskSteps = override?.steps ?? ticket.steps;
   const steps = [
     "Read the project's agent instructions (AGENTS.md, CLAUDE.md, STATE.md) and any playbook they point to for this kind of task.",
-    ...(ticket.steps.length ? ticket.steps : [`Implement the request below so that the goal is met.`]),
+    ...(taskSteps.length ? taskSteps : [`Implement the request below so that the goal is met.`]),
     ...(project.verify_commands.length
       ? [`Run ${project.verify_commands.map((c) => `\`${c}\``).join(" then ")} and fix every failure.`]
       : ["Run the project's build or tests and fix every failure."]),
@@ -56,7 +66,7 @@ Ticket #${ticket.number} (${TYPE_LABELS[ticket.type]}) from simple-jira: ${ticke
 Project: ${project.name} (${project.repo}), branch \`${branch}\`.
 
 ## Goal
-${ticket.goal?.trim() || ticket.title}
+${override?.goal ?? (ticket.goal?.trim() || ticket.title)}
 
 ## Request (as dictated)
 ${quote(ticket.description)}
@@ -117,6 +127,12 @@ export function reopenAfterFailedCheck(path: string, output: string) {
   let text = clearStatus(readTask(path));
   text = insertStep(text, "Make the check command pass again (see the failure under Notes), then ship again.");
   text = appendToNotes(text, `Check failed after STATUS: DONE (run by simple-jira):\n\`\`\`\n${output.slice(-3000)}\n\`\`\``);
+  writeFileSync(path, text, "utf8");
+}
+
+export function reopenForConflict(path: string, step: string) {
+  let text = insertStep(clearStatus(readTask(path)), step);
+  text = appendToNotes(text, "simple-jira: the PR could not be merged because main moved on; conflict step added above.");
   writeFileSync(path, text, "utf8");
 }
 
