@@ -41,7 +41,8 @@ async function excludeTaskFile(repo: string) {
   }
 }
 
-// Isolated worktree next to the project, on a new branch from the main checkout's HEAD.
+// Isolated worktree next to the project, on a new branch from the freshly fetched default branch,
+// so merged PRs are included even when the main checkout lags behind.
 export async function createWorktree(
   ticket: Ticket,
   project: Project,
@@ -52,8 +53,9 @@ export async function createWorktree(
   if (!existsSync(join(repo, ".git"))) throw new Error(`Dépôt introuvable : ${repo}`);
 
   const { path, branch } = await planWorktree(ticket, project);
-  log.status(`Worktree ${path} sur ${branch}`);
-  await git(["worktree", "add", "-b", branch, path, "HEAD"], repo, signal);
+  log.status(`Worktree ${path} sur ${branch} depuis origin/${project.default_branch}`);
+  await git(["fetch", "origin", project.default_branch], repo, signal);
+  await git(["worktree", "add", "-b", branch, path, `origin/${project.default_branch}`], repo, signal);
   await excludeTaskFile(repo);
 
   const modules = join(repo, "node_modules");

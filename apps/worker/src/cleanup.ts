@@ -2,6 +2,7 @@
 // Usage: pnpm --filter @simple-jira/worker cleanup <ticket-number>
 import { getProject, getTicketByNumber, updateTicket } from "@simple-jira/core";
 import { db } from "./db";
+import { git } from "./exec";
 import { removeWorktree } from "./workspace";
 
 const number = Number(process.argv[2]);
@@ -20,6 +21,15 @@ if (["queued", "running", "verifying"].includes(ticket.status)) {
   throw new Error(`Ticket #${number} est ${ticket.status} : annule-le d'abord`);
 }
 
-await removeWorktree(await getProject(db, ticket.project_id), ticket.worktree_path);
-await updateTicket(db, ticket.id, { worktree_path: null });
-console.log(`Worktree ${ticket.worktree_path} supprimé (branche ${ticket.branch} conservée).`);
+const project = await getProject(db, ticket.project_id);
+await removeWorktree(project, ticket.worktree_path);
+
+// A ticket that never delivered can start over: drop its empty local branch so a retry gets a fresh one.
+if (ticket.branch && !ticket.pr_url) {
+  await git(["branch", "-D", ticket.branch], project.local_path).catch(() => undefined);
+  await updateTicket(db, ticket.id, { worktree_path: null, branch: null, verify_attempts: 0 });
+  console.log(`Worktree ${ticket.worktree_path} et branche ${ticket.branch} supprimés : prêt pour une relance.`);
+} else {
+  await updateTicket(db, ticket.id, { worktree_path: null });
+  console.log(`Worktree ${ticket.worktree_path} supprimé (branche ${ticket.branch} conservée).`);
+}
