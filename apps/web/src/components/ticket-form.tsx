@@ -88,6 +88,18 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
           placeholder="Ce qui ne va pas, ou ce que tu veux. Comme tu le dirais à voix haute."
         />
       </div>
+      <div>
+        <label className="label" htmlFor="goal">
+          Objectif (&quot;fini&quot; =)
+        </label>
+        <input id="goal" name="goal" className="input" placeholder="Optionnel : par défaut, le titre" />
+      </div>
+      <div>
+        <label className="label" htmlFor="steps">
+          Étapes <span className="normal-case text-zinc-500">(une par ligne, optionnel)</span>
+        </label>
+        <textarea id="steps" name="steps" rows={4} className="input font-mono" />
+      </div>
       <div className="flex items-center gap-3">
         <button className="btn" disabled={pending}>
           {pending ? "Création…" : "Mettre en file"}

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createTicketSchema,
   projectSchema,
+  slugify,
   type CreateTicketInput,
   type ProjectInput,
 } from "./schemas";
@@ -81,6 +82,9 @@ export async function createTicket(db: Db, input: CreateTicketInput): Promise<Ti
       type: values.type,
       title: values.title,
       description: values.description,
+      slug: values.slug ?? slugify(values.new_project?.slug ?? values.title),
+      goal: values.goal || null,
+      steps: values.steps,
       new_project: values.type === "new_project" ? values.new_project : null,
       source: values.source,
     })

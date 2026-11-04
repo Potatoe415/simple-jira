@@ -36,6 +36,7 @@ export interface Project {
   verify_commands: string[];
   env_files: string[];
   agent_instructions: string;
+  ship_command: string;
   created_at: string;
   updated_at: string;
 }
@@ -47,6 +48,9 @@ export interface Ticket {
   type: TicketType;
   title: string;
   description: string;
+  slug: string | null;
+  goal: string | null;
+  steps: string[];
   new_project: NewProjectSpec | null;
   status: TicketStatus;
   source: "mcp" | "dashboard";

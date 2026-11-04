@@ -71,6 +71,12 @@ export function ProjectForm({ project }: { project?: Project }) {
         <Lines name="setup_commands" label="Installation" value={project?.setup_commands} placeholder="npm ci" />
         <Lines name="verify_commands" label="Vérification" value={project?.verify_commands} placeholder="npm run check" />
       </div>
+      <Field
+        name="ship_command"
+        label="Commande de livraison (commit + push de la branche)"
+        value={project?.ship_command}
+        placeholder={'powershell -File scripts/ship.ps1 -Message "<why>"'}
+      />
       <div>
         <label className="label" htmlFor="agent_instructions">
           Consignes pour l&apos;agent

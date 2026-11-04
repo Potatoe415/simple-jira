@@ -48,6 +48,8 @@ export async function createTicketAction(_: ActionState, form: FormData): Promis
       project_slug: isNew ? undefined : project,
       title: field(form, "title"),
       description: field(form, "description"),
+      goal: field(form, "goal") || undefined,
+      steps: lines(form, "steps"),
       new_project: isNew
         ? { slug: field(form, "new_slug"), name: field(form, "new_name"), description: field(form, "description") }
         : undefined,
@@ -103,6 +105,7 @@ export async function saveProjectAction(_: ActionState, form: FormData): Promise
         verify_commands: lines(form, "verify_commands"),
         env_files: lines(form, "env_files"),
         agent_instructions: field(form, "agent_instructions"),
+        ship_command: field(form, "ship_command"),
       },
       id,
     );

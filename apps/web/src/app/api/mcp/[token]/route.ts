@@ -20,10 +20,14 @@ import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { adminDb } from "@/lib/supabase/admin";
 
-const INSTRUCTIONS = `simple-jira transforme des demandes dictées en tickets exécutés par un agent de code sur le PC de l'utilisateur, livrés en pull request.
+const INSTRUCTIONS = `simple-jira transforme des demandes dictées en tickets exécutés sans surveillance par Claude Code sur le PC de l'utilisateur, livrés en pull request.
 - Avant de créer un ticket, appelle list_projects et déduis le projet visé (les surnoms comptent). Si c'est ambigu, demande à l'utilisateur au lieu de deviner.
 - Le type est "fix" pour un bug, "feature" pour une évolution, "new_project" pour un projet qui n'existe pas encore.
 - Dans description, garde fidèlement la demande de l'utilisateur et ajoute les précisions obtenues en conversation. Ne l'invente pas.
+- L'agent ne pourra poser aucune question en cours de route : avant de créer le ticket, clarifie avec l'utilisateur les choix produit importants (règles, comportement attendu, où ça s'affiche).
+- goal : une ou deux phrases qui décrivent "fini" de façon vérifiable.
+- steps : 3 à 10 étapes petites, concrètes, vérifiables, dans l'ordre, en anglais. N'inclus pas la lecture des docs du projet, la commande de vérification ni le commit/push : le worker les ajoute.
+- slug : 2 à 4 mots en kebab-case anglais, il sert de nom de branche (feat/<slug>).
 - Quand l'utilisateur demande s'il y a des questions ou des nouvelles, appelle list_open_questions puis list_tickets.
 - Pour répondre à une question d'un agent, appelle answer_question avec la réponse de l'utilisateur, sans la reformuler au point d'en changer le sens.`;
 
@@ -79,6 +83,16 @@ const handler = createMcpHandler(
           project_slug: z.string().optional().describe("slug renvoyé par list_projects (sauf new_project)"),
           title: z.string().min(1).max(200).describe("titre court et explicite"),
           description: z.string().min(1).describe("la demande complète, fidèle à l'utilisateur"),
+          goal: z.string().min(1).describe("une ou deux phrases : à quoi ressemble 'fini'"),
+          steps: z
+            .array(z.string().min(1))
+            .min(1)
+            .max(15)
+            .describe("étapes concrètes et vérifiables, en anglais, sans docs/check/commit"),
+          slug: z
+            .string()
+            .regex(/^[a-z0-9][a-z0-9-]{0,47}$/)
+            .describe("kebab-case anglais court, nom de branche"),
           new_project: z
             .object({
               slug: z.string().describe("minuscules, chiffres et tirets, servira de nom de repo"),
@@ -91,7 +105,9 @@ const handler = createMcpHandler(
       async (input) => {
         try {
           const ticket = await createTicket(adminDb(), { ...input, source: "mcp" });
-          return text(`Ticket #${ticket.number} créé (${TYPE_LABELS[ticket.type]}) : ${ticket.title}. Il est en file.`);
+          return text(
+            `Ticket #${ticket.number} créé (${TYPE_LABELS[ticket.type]}) : ${ticket.title}. En file, le worker le prendra dans les 5 minutes.`,
+          );
         } catch (error) {
           return failure(error);
         }

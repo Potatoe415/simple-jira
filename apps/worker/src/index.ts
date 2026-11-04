@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { hostname } from "node:os";
 import type { Ticket } from "@simple-jira/core";
 import { addEvent } from "@simple-jira/core";
@@ -27,19 +28,17 @@ async function preflight() {
   } catch (error) {
     console.warn(`⚠ GitHub inaccessible (git credential manager ou gh auth login) : ${(error as Error).message}`);
   }
+  if (!existsSync(config.runnerScript)) console.warn(`⚠ Runner introuvable : ${config.runnerScript}`);
   for (const [command, args] of [
     ["git", ["--version"]],
-    [config.claudeBin, ["--version"]],
+    [config.runnerEngine, ["--version"]],
   ] as const) {
-    const result = await run(command, [...args], { cwd: process.cwd(), claudeAuth: true, timeoutMs: 30_000 }).catch(
+    const result = await run(command, [...args], { cwd: process.cwd(), timeoutMs: 30_000 }).catch(
       (error: Error) => ({ code: -1, output: error.message }),
     );
     if (result.code !== 0) {
       console.warn(`⚠ ${command} ${args.join(" ")} a échoué :\n${result.output.trim()}`);
     }
-  }
-  if (!process.env.CLAUDE_CODE_OAUTH_TOKEN && !process.env.ANTHROPIC_API_KEY) {
-    console.warn("⚠ Ni CLAUDE_CODE_OAUTH_TOKEN ni ANTHROPIC_API_KEY : lance `claude setup-token`.");
   }
 }
 
@@ -63,7 +62,9 @@ async function claim(): Promise<Ticket | null> {
 }
 
 async function main() {
-  console.log(`simple-jira worker "${config.workerId}" — bulles dans ${config.worktreesRoot}`);
+  console.log(
+    `simple-jira worker "${config.workerId}" : file vérifiée toutes les ${config.pollIntervalMs / 1000}s, runner ${config.runnerScript}`,
+  );
   await preflight();
   await requeueInterrupted();
   await heartbeat();

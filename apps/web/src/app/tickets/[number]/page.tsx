@@ -105,6 +105,25 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
       <section className="card mb-4">
         <h2 className="label">Demande</h2>
         <p className="whitespace-pre-wrap text-sm">{ticket.description}</p>
+        {ticket.goal && (
+          <>
+            <h2 className="label mt-4">Objectif</h2>
+            <p className="text-sm">{ticket.goal}</p>
+          </>
+        )}
+        {ticket.steps.length > 0 && (
+          <>
+            <h2 className="label mt-4">Étapes</h2>
+            <ol className="list-decimal space-y-1 pl-5 text-sm">
+              {ticket.steps.map((step, index) => (
+                <li key={index}>{step}</li>
+              ))}
+            </ol>
+          </>
+        )}
+        {ticket.worktree_path && (
+          <p className="mt-4 font-mono text-xs text-zinc-500">Worktree : {ticket.worktree_path}</p>
+        )}
       </section>
 
       {ticket.error && (

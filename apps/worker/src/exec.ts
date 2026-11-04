@@ -6,7 +6,6 @@ const MAX_CAPTURE = 200_000;
 export interface RunOptions {
   cwd: string;
   shell?: boolean;
-  claudeAuth?: boolean;
   extraEnv?: Record<string, string>;
   input?: string;
   timeoutMs?: number;
@@ -43,7 +42,7 @@ export function run(command: string, args: string[], options: RunOptions): Promi
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
-      env: { ...childEnv(options.claudeAuth ?? false), ...options.extraEnv },
+      env: { ...childEnv(), ...options.extraEnv },
       shell: options.shell ?? false,
       detached: process.platform !== "win32",
       windowsHide: true,
