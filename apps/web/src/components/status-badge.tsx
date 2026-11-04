@@ -5,7 +5,8 @@ const COLORS: Record<TicketStatus, string> = {
   running: "bg-sky-900 text-sky-200",
   blocked: "bg-amber-900 text-amber-200",
   verifying: "bg-violet-900 text-violet-200",
-  delivered: "bg-emerald-900 text-emerald-200",
+  delivered: "bg-teal-900 text-teal-200",
+  merged: "bg-emerald-700 text-white",
   failed: "bg-red-900 text-red-200",
   cancelled: "bg-zinc-800 text-zinc-400",
 };

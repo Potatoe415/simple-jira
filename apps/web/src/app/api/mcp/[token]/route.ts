@@ -10,6 +10,7 @@ import {
   listProjects,
   listQuestions,
   listTickets,
+  requestMerge,
   retryTicket,
   STATUS_LABELS,
   TICKET_TYPES,
@@ -42,7 +43,8 @@ function failure(error: unknown) {
 function ticketLine(ticket: TicketWithProject) {
   const project = ticket.project?.name ?? ticket.new_project?.name ?? "?";
   const pr = ticket.pr_url ? ` — PR ${ticket.pr_url}` : "";
-  return `#${ticket.number} [${STATUS_LABELS[ticket.status]}] ${project} — ${ticket.title}${pr}`;
+  const preview = ticket.preview_url ? ` — preview ${ticket.preview_url}` : "";
+  return `#${ticket.number} [${STATUS_LABELS[ticket.status]}] ${project} — ${ticket.title}${pr}${preview}`;
 }
 
 const handler = createMcpHandler(
@@ -226,6 +228,27 @@ const handler = createMcpHandler(
           if (!ticket) return failure(new Error(`Ticket #${number} introuvable`));
           await cancelTicket(db, ticket.id);
           return text(`Ticket #${number} annulé.`);
+        } catch (error) {
+          return failure(error);
+        }
+      },
+    );
+
+    server.registerTool(
+      "merge_ticket",
+      {
+        title: "Merger en prod",
+        description:
+          "Merge la PR d'un ticket livré dans main : il part en production. Uniquement sur demande explicite de l'utilisateur, après confirmation.",
+        inputSchema: z.object({ number: z.number().int().positive() }),
+      },
+      async ({ number }) => {
+        try {
+          const db = adminDb();
+          const ticket = await getTicketByNumber(db, number);
+          if (!ticket) return failure(new Error(`Ticket #${number} introuvable`));
+          await requestMerge(db, ticket.id);
+          return text(`Merge du ticket #${number} demandé. Le worker le fait dans la minute, puis Vercel déploie en prod.`);
         } catch (error) {
           return failure(error);
         }

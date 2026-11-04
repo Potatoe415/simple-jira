@@ -2,6 +2,7 @@ import { TYPE_LABELS, type TicketWithProject } from "@simple-jira/core";
 import Link from "next/link";
 import { timeAgo } from "@/lib/format";
 import { StatusBadge } from "./status-badge";
+import { TicketActions } from "./ticket-actions";
 
 export function TicketRow({ ticket }: { ticket: TicketWithProject }) {
   const project = ticket.project?.name ?? ticket.new_project?.name ?? "?";
@@ -15,10 +16,18 @@ export function TicketRow({ ticket }: { ticket: TicketWithProject }) {
         {project} · {TYPE_LABELS[ticket.type]} · {timeAgo(ticket.updated_at)}
       </span>
       {ticket.pr_url && (
-        <a href={ticket.pr_url} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 hover:underline">
+        <a href={ticket.pr_url} target="_blank" rel="noreferrer" className="text-xs text-zinc-400 hover:underline">
           PR ↗
         </a>
       )}
+      <TicketActions
+        id={ticket.id}
+        number={ticket.number}
+        status={ticket.status}
+        preview_url={ticket.preview_url}
+        pr_url={ticket.pr_url}
+        merge_requested_at={ticket.merge_requested_at}
+      />
     </li>
   );
 }

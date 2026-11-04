@@ -7,13 +7,14 @@ export const TICKET_STATUSES = [
   "blocked",
   "verifying",
   "delivered",
+  "merged",
   "failed",
   "cancelled",
 ] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];
 
 export const ACTIVE_STATUSES: readonly TicketStatus[] = ["queued", "running", "blocked", "verifying"];
-export const FINAL_STATUSES: readonly TicketStatus[] = ["delivered", "failed", "cancelled"];
+export const FINAL_STATUSES: readonly TicketStatus[] = ["delivered", "merged", "failed", "cancelled"];
 
 export type EventKind = "status" | "agent" | "tool" | "verify" | "error" | "info";
 
@@ -58,6 +59,9 @@ export interface Ticket {
   branch: string | null;
   worktree_path: string | null;
   pr_url: string | null;
+  preview_url: string | null;
+  merge_requested_at: string | null;
+  merged_at: string | null;
   summary: string | null;
   error: string | null;
   verify_attempts: number;
@@ -107,7 +111,8 @@ export const STATUS_LABELS: Record<TicketStatus, string> = {
   running: "En cours",
   blocked: "Bloqué",
   verifying: "Vérification",
-  delivered: "Livré",
+  delivered: "PR prête",
+  merged: "En prod",
   failed: "Échec",
   cancelled: "Annulé",
 };

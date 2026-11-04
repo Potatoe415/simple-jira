@@ -202,6 +202,19 @@ export async function retryTicket(db: Db, ticketId: string): Promise<void> {
   await addEvent(db, ticketId, "status", "Relance demandée");
 }
 
+export async function requestMerge(db: Db, ticketId: string): Promise<void> {
+  const { data, error } = await db
+    .from("tickets")
+    .update({ merge_requested_at: new Date().toISOString() })
+    .eq("id", ticketId)
+    .eq("status", "delivered")
+    .is("merged_at", null)
+    .select("id");
+  if (error) fail("requestMerge", error);
+  if (!data.length) throw new Error("Seul un ticket avec une PR prête peut être mergé");
+  await addEvent(db, ticketId, "status", "Merge en prod demandé");
+}
+
 export async function getWorkerStatus(db: Db): Promise<WorkerStatus | null> {
   const { data, error } = await db
     .from("worker_status")

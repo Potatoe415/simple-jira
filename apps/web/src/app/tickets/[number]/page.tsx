@@ -13,6 +13,7 @@ import { AnswerForm } from "@/components/answer-form";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { Header } from "@/components/header";
 import { StatusBadge } from "@/components/status-badge";
+import { TicketActions } from "@/components/ticket-actions";
 import { requireOwner } from "@/lib/auth";
 import { clockTime, timeAgo } from "@/lib/format";
 import { adminDb } from "@/lib/supabase/admin";
@@ -53,6 +54,14 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
         <h1 className="min-w-0 flex-1 text-xl font-semibold">
           <span className="text-zinc-500">#{ticket.number}</span> {ticket.title}
         </h1>
+        <TicketActions
+          id={ticket.id}
+          number={ticket.number}
+          status={ticket.status}
+          preview_url={ticket.preview_url}
+          pr_url={ticket.pr_url}
+          merge_requested_at={ticket.merge_requested_at}
+        />
         {isActive && (
           <form action={cancelTicketAction}>
             <input type="hidden" name="ticket_id" value={ticket.id} />

@@ -4,6 +4,7 @@ import {
   answerQuestion,
   cancelTicket,
   createTicket,
+  requestMerge,
   retryTicket,
   saveProject,
   type TicketType,
@@ -78,6 +79,12 @@ export async function answerQuestionAction(_: ActionState, form: FormData): Prom
 export async function cancelTicketAction(form: FormData) {
   await requireOwner();
   await cancelTicket(adminDb(), field(form, "ticket_id"));
+  revalidatePath("/", "layout");
+}
+
+export async function requestMergeAction(form: FormData) {
+  await requireOwner();
+  await requestMerge(adminDb(), field(form, "ticket_id"));
   revalidatePath("/", "layout");
 }
 

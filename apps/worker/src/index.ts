@@ -5,6 +5,7 @@ import { addEvent } from "@simple-jira/core";
 import { config } from "./config";
 import { db } from "./db";
 import { gh, run } from "./exec";
+import { followUp } from "./followup";
 import { processTicket } from "./pipeline";
 
 let currentTicketId: string | null = null;
@@ -69,6 +70,8 @@ async function main() {
   await requeueInterrupted();
   await heartbeat();
   const beat = setInterval(() => void heartbeat(), 30_000);
+  void followUp();
+  const follow = setInterval(() => void followUp(), 20_000);
 
   const shutdown = () => {
     if (stopping) process.exit(1);
@@ -100,6 +103,7 @@ async function main() {
   }
 
   clearInterval(beat);
+  clearInterval(follow);
   await heartbeat();
   process.exit(0);
 }
