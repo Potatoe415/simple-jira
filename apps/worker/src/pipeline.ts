@@ -149,8 +149,10 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
         pr_url: prUrl,
         summary: [notes, diffStat && `\`\`\`\n${diffStat}\n\`\`\``].filter(Boolean).join("\n\n") || null,
         finished_at: now(),
+        merge_requested_at: ticket.auto_merge ? now() : null,
       });
       log.status(`Livré : ${prUrl} (worktree conservé : ${worktree})`);
+      if (ticket.auto_merge) log.status("Direct en prod demandé : merge automatique");
       return;
     }
 

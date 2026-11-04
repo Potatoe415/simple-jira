@@ -100,6 +100,10 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
         </label>
         <textarea id="steps" name="steps" rows={4} className="input font-mono" />
       </div>
+      <label className="flex items-center gap-2 text-sm text-zinc-300">
+        <input type="checkbox" name="auto_merge" className="h-4 w-4 accent-emerald-500" />
+        Direct en prod (merge automatique dès que la PR est prête)
+      </label>
       <div className="flex items-center gap-3">
         <button className="btn" disabled={pending}>
           {pending ? "Création…" : "Mettre en file"}

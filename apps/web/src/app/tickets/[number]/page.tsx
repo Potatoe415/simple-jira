@@ -90,8 +90,8 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
           <dd>{timeAgo(ticket.created_at)}</dd>
         </div>
         <div>
-          <dt className="label">Coût estimé</dt>
-          <dd>{Number(ticket.cost_usd).toFixed(2)} $</dd>
+          <dt className="label">Livraison</dt>
+          <dd>{ticket.auto_merge ? "Direct en prod" : "PR à valider"}</dd>
         </div>
         {ticket.branch && (
           <div className="col-span-2">

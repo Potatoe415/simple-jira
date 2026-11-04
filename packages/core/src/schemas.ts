@@ -36,6 +36,7 @@ export const createTicketSchema = z
     slug: z.string().trim().regex(TASK_SLUG_RE, "slug: minuscules, chiffres et tirets").optional(),
     goal: z.string().trim().max(4000).optional(),
     steps: lines.default([]),
+    auto_merge: z.boolean().default(false),
     new_project: newProjectSpecSchema.optional(),
     source: z.enum(["mcp", "dashboard"]).default("dashboard"),
   })

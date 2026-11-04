@@ -52,6 +52,7 @@ export interface Ticket {
   slug: string | null;
   goal: string | null;
   steps: string[];
+  auto_merge: boolean;
   new_project: NewProjectSpec | null;
   status: TicketStatus;
   source: "mcp" | "dashboard";

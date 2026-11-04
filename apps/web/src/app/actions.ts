@@ -51,6 +51,7 @@ export async function createTicketAction(_: ActionState, form: FormData): Promis
       description: field(form, "description"),
       goal: field(form, "goal") || undefined,
       steps: lines(form, "steps"),
+      auto_merge: form.get("auto_merge") === "on",
       new_project: isNew
         ? { slug: field(form, "new_slug"), name: field(form, "new_name"), description: field(form, "description") }
         : undefined,

@@ -85,6 +85,7 @@ export async function createTicket(db: Db, input: CreateTicketInput): Promise<Ti
       slug: values.slug ?? slugify(values.new_project?.slug ?? values.title),
       goal: values.goal || null,
       steps: values.steps,
+      auto_merge: values.auto_merge,
       new_project: values.type === "new_project" ? values.new_project : null,
       source: values.source,
     })

@@ -51,6 +51,8 @@ Pour un projet qui n'existe pas encore, le type est `new_project` : un repo GitH
 - `steps` : 3 à 8 étapes petites, concrètes, vérifiables, dans l'ordre. En anglais. Nomme le jeu et son dossier quand tu le connais (`public/games/<id>/`).
   N'ajoute pas : lire les docs du projet, lancer la vérification, commit/push. Le worker les ajoute tout seul.
 - `slug` : 2 à 4 mots en anglais, kebab-case. Il devient la branche `feat/<slug>`. Ex. `simon-difficulty`.
+- `auto_merge` : `true` seulement si je dis explicitement "direct en prod", "mets en prod", "merge direct" ou équivalent. La PR est alors mergée dans main dès qu'elle est prête, et Vercel déploie en prod. Sinon `false` : la PR attend que je la valide (bouton "Merger en prod" ou "merge le #N").
+  Rappelle-le dans le résumé avant création : "Livraison : direct en prod" ou "Livraison : PR à valider".
 
 ## Exemple
 
