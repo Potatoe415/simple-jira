@@ -3,16 +3,16 @@
 Replace on every update. Max 40 lines. History lives in git and `docs/decisions/`.
 
 Status: Aligned with bootstrap v10.1 on 2026-11-05 (branch `chore/align-bootstrap-v10-1`).
-Focus: Ticket deletion shipped: row button (7c6d134) and MCP `delete_ticket` tool. Changes are committed and pushed to `main` automatically (test env).
+Focus: "Context" download link in the top bar (`/api/context`, owner only) serving `docs/claude-app-context.md`. Changes are committed and pushed to `main` automatically (test env).
 Level: L1
 
 Context:
-- Working_On: `apps/web/src/app/api/mcp/[token]/route.ts` (`delete_ticket`), `docs/claude-app-context.md`, `packages/core/src/ops.ts` (`deleteTicket`), `apps/web/src/app/actions.ts` (`deleteTicketAction`), `apps/web/src/components/delete-ticket-button.tsx`, `components/ticket-row.tsx`
-- Rules: only finished tickets (FINAL_STATUSES) can be deleted; refused while an active ticket depends on it; events and questions cascade; worktree and branch are not touched
+- Working_On: `apps/web/src/app/api/context/route.ts`, `apps/web/next.config.ts` (`outputFileTracingIncludes`), `components/header.tsx`
+- Recent: ticket deletion (row button 7c6d134, MCP `delete_ticket` 9ed22ac)
 - Relevant_Decisions: 0001
 
 Next:
-- Visual check of the delete button in the browser (`pnpm dev`).
+- Check on the deployed app that the Context link downloads the file (Vercel file tracing), and the delete button in the browser.
 - User confirms or corrects every `(inferred — confirm)` marker.
 - Extend `pnpm check` with lint, tests, and dependency audit (BACKLOG).
 - Decide the target structure: keep `apps/*` + `packages/core`, or move to `src/modules/` (BACKLOG).
