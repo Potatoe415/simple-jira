@@ -1,13 +1,18 @@
 "use server";
 
 import {
+  addOwnerComment,
   answerQuestion,
   cancelTicket,
   createTicket,
+  deleteProjectMemory,
+  MIGRATION_HINT,
   requestMerge,
   retryTicket,
   saveProject,
   setPriority,
+  setProjectMemory,
+  type Effort,
   type TicketType,
 } from "@simple-jira/core";
 import { revalidatePath } from "next/cache";
@@ -33,6 +38,11 @@ function lines(form: FormData, name: string): string[] {
     .filter(Boolean);
 }
 
+// "#12, 14 #15" -> [12, 14, 15]
+function ticketNumbers(form: FormData, name: string): number[] {
+  return [...field(form, name).matchAll(/d+/g)].map((match) => Number(match[0]));
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof z.ZodError) return z.prettifyError(error);
   return error instanceof Error ? error.message : String(error);
@@ -54,6 +64,11 @@ export async function createTicketAction(_: ActionState, form: FormData): Promis
       steps: lines(form, "steps"),
       auto_merge: form.get("auto_merge") === "on",
       priority: Number(field(form, "priority") || 3) as 1 | 2 | 3,
+      model: field(form, "model") || undefined,
+      effort: (field(form, "effort") || undefined) as Effort | undefined,
+      parent_id: ticketNumbers(form, "parent")[0],
+      blocked_by: ticketNumbers(form, "blocked_by"),
+      check_paths: lines(form, "check_paths"),
       new_project: isNew
         ? { slug: field(form, "new_slug"), name: field(form, "new_name"), description: field(form, "description") }
         : undefined,
@@ -122,6 +137,10 @@ export async function saveProjectAction(_: ActionState, form: FormData): Promise
         env_files: lines(form, "env_files"),
         agent_instructions: field(form, "agent_instructions"),
         ship_command: field(form, "ship_command"),
+        default_model: field(form, "default_model") || null,
+        default_effort: (field(form, "default_effort") || null) as Effort | null,
+        notify_url: field(form, "notify_url") || null,
+        browser_check: form.get("browser_check") === "on",
       },
       id,
     );
@@ -130,6 +149,37 @@ export async function saveProjectAction(_: ActionState, form: FormData): Promise
   }
   revalidatePath("/projects");
   return { ok: true };
+}
+
+export async function addCommentAction(_: ActionState, form: FormData): Promise<ActionState> {
+  await requireOwner();
+  try {
+    await addOwnerComment(adminDb(), field(form, "ticket_id"), field(form, "body"));
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  revalidatePath(`/tickets/${field(form, "number")}`);
+  return { ok: true };
+}
+
+export async function saveMemoryAction(_: ActionState, form: FormData): Promise<ActionState> {
+  await requireOwner();
+  try {
+    const saved = await setProjectMemory(adminDb(), field(form, "project_id"), [
+      { key: field(form, "key"), body: field(form, "body") },
+    ]);
+    if (!saved) return { error: `Mémoire indisponible. ${MIGRATION_HINT}` };
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  revalidatePath("/projects");
+  return { ok: true };
+}
+
+export async function deleteMemoryAction(form: FormData) {
+  await requireOwner();
+  await deleteProjectMemory(adminDb(), field(form, "project_id"), field(form, "id"));
+  revalidatePath("/projects");
 }
 
 export async function signOutAction() {

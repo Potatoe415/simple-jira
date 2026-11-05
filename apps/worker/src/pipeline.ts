@@ -2,8 +2,12 @@ import { existsSync, writeFileSync } from "node:fs";
 import {
   askQuestion,
   getProject,
+  getProjectMemory,
   getTicket,
   listQuestions,
+  listUnreadOwnerComments,
+  markCommentsRead,
+  setProjectMemory,
   updateTicket,
   type Project,
   type Ticket,
@@ -11,16 +15,21 @@ import {
 import { config } from "./config";
 import { db } from "./db";
 import { deliver } from "./delivery";
+import { watchJournal } from "./journal";
 import { createLogger, type TicketLogger } from "./logger";
 import { createNewProject } from "./new-project";
+import { notify } from "./notify";
 import { runRunner } from "./runner";
 import {
   applyAnswers,
+  applyOwnerComments,
+  learnings,
   notesSection,
   readTask,
   renderTask,
   reopen,
   reopenAfterFailedCheck,
+  reopenForComments,
   taskState,
 } from "./task-file";
 import { createWorktree, runCommands, taskPath } from "./workspace";
@@ -33,6 +42,7 @@ class Stop extends Error {}
 
 export async function processTicket(ticket: Ticket): Promise<void> {
   const log = createLogger(ticket.id, ticket.number);
+  log.transition("running", "pris en charge par le worker");
   const abort = new AbortController();
   const watcher = setInterval(() => {
     getTicket(db, ticket.id)
@@ -51,11 +61,35 @@ export async function processTicket(ticket: Ticket): Promise<void> {
       const message = error instanceof Error ? error.message : String(error);
       log.error(message);
       await updateTicket(db, ticket.id, { status: "failed", error: message.slice(0, 4000), finished_at: now() });
+      log.transition("failed");
+      await notify("failed", ticket, await projectOf(ticket), message.split("\n")[0]);
     }
   } finally {
     clearInterval(watcher);
     await log.flush();
   }
+}
+
+async function projectOf(ticket: Ticket): Promise<Project | null> {
+  return ticket.project_id ? getProject(db, ticket.project_id).catch(() => null) : null;
+}
+
+// Owner comments posted since the last pass go under Notes, so the next pass sees them.
+async function forwardComments(ticket: Ticket, task: string, log: TicketLogger): Promise<number> {
+  const current = await getTicket(db, ticket.id);
+  const comments = await listUnreadOwnerComments(db, current);
+  if (!comments.length) return 0;
+  applyOwnerComments(task, comments);
+  await markCommentsRead(db, ticket.id, comments[comments.length - 1]!.id);
+  log.status(`${comments.length} commentaire(s) du propriétaire ajouté(s) aux Notes de TASK.md`);
+  return comments.length;
+}
+
+async function saveLearnings(project: Project, taskText: string, log: TicketLogger) {
+  const entries = learnings(taskText);
+  if (!entries.length) return;
+  const saved = await setProjectMemory(db, project.id, entries);
+  if (saved) log.info(`Mémoire du projet : ${entries.length} apprentissage(s) enregistré(s)`);
 }
 
 async function forwardAnswers(ticket: Ticket, task: string, log: TicketLogger) {
@@ -107,7 +141,7 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
         );
       }
     }
-    writeFileSync(task, renderTask(ticket, project, branch), "utf8");
+    writeFileSync(task, renderTask(ticket, project, branch, undefined, await getProjectMemory(db, project.id)), "utf8");
     log.status("TASK.md écrit");
   } else {
     await forwardAnswers(ticket, task, log);
@@ -119,8 +153,27 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
     const before = taskState(readTask(task));
     if (before.status !== "DONE") {
       await updateTicket(db, ticket.id, { status: "running" });
-      log.status(`Lancement du runner Claude Code (${before.open} étape(s) ouverte(s))`);
-      const result = await runRunner(worktree, log, signal);
+      const model = ticket.model || project.default_model || null;
+      const effort = ticket.effort || project.default_effort || null;
+      const settings = [model && `modèle ${model}`, effort && `effort ${effort}`].filter(Boolean).join(", ");
+      log.status(`Lancement du runner Claude Code (${before.open} étape(s) ouverte(s)${settings ? `, ${settings}` : ""})`);
+      const journal = watchJournal(task, log);
+      const result = await runRunner({
+        worktree,
+        task,
+        model,
+        effort,
+        verifyCommands: project.verify_commands,
+        log,
+        signal,
+        beforePass: async () => {
+          await forwardComments(ticket, task, log).catch((error: Error) => log.error(`Commentaires : ${error.message}`));
+        },
+      }).finally(() => journal.stop());
+      if (result.costUsd > 0) {
+        ticket = { ...ticket, cost_usd: Number(ticket.cost_usd ?? 0) + result.costUsd };
+        await updateTicket(db, ticket.id, { cost_usd: ticket.cost_usd }).catch(() => undefined);
+      }
       signal.throwIfAborted();
       if (result.timedOut) throw new Error(`Runner arrêté après ${config.runnerTimeoutMs / 60_000} min`);
       const progressed = taskState(readTask(task));
@@ -135,7 +188,9 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
     if (after.status === "BLOCKED") {
       await askQuestion(db, ticket.id, after.blockedReason ?? "Blocage sans détail");
       await updateTicket(db, ticket.id, { status: "blocked", summary: notesSection(readTask(task)) || null });
-      log.status(`Bloqué : ${after.blockedReason}`);
+      log.event("question", after.blockedReason ?? "Blocage sans détail");
+      log.transition("blocked", after.blockedReason ?? undefined);
+      await notify("question", ticket, project, after.blockedReason ?? undefined);
       throw new Stop();
     }
     if (after.status !== "DONE") {
@@ -144,12 +199,22 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
       );
     }
 
+    // A comment that arrived during the last pass reopens the task instead of being lost.
+    if ((await forwardComments(ticket, task, log).catch(() => 0)) > 0) {
+      reopenForComments(task);
+      log.status("Commentaire reçu après STATUS: DONE : étape ajoutée, relance du runner");
+      continue;
+    }
+
     await updateTicket(db, ticket.id, { status: "verifying" });
-    log.status(`STATUS: DONE (${after.done} étapes). Vérification par simple-jira`);
+    log.transition("verifying", `STATUS: DONE (${after.done} étapes), vérification par simple-jira`);
     const check = await runCommands(project.verify_commands, worktree, log, signal);
 
+    const checkDetail = check.ok ? "" : `\n${check.output.slice(-1500)}`;
+    log.event("check", `${check.ok ? "✓" : "✗"} Vérification simple-jira${checkDetail}`, { ok: check.ok });
     if (check.ok) {
       const taskText = readTask(task);
+      await saveLearnings(project, taskText, log).catch((error: Error) => log.error(`Mémoire : ${error.message}`));
       const { prUrl, diffStat } = await deliver({ ticket, project, worktree, branch, taskText, log, signal });
       const notes = notesSection(taskText);
       await updateTicket(db, ticket.id, {
@@ -159,7 +224,9 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
         finished_at: now(),
         merge_requested_at: ticket.auto_merge || ticket.merge_requested_at ? now() : null,
       });
-      log.status(`Livré : ${prUrl} (worktree conservé : ${worktree})`);
+      log.event("pr", `Pull request : ${prUrl}`, { url: prUrl });
+      log.transition("delivered", `worktree conservé : ${worktree}`);
+      await notify("pr_ready", ticket, project, prUrl);
       if (ticket.auto_merge || ticket.merge_requested_at) log.status("Merge en prod demandé : il part automatiquement");
       return;
     }

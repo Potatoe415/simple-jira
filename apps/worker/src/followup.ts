@@ -1,8 +1,11 @@
 import { existsSync, writeFileSync } from "node:fs";
-import { addEvent, getProject, updateTicket, type Project, type Ticket } from "@simple-jira/core";
+import { addEvent, getProject, getTicket, updateTicket, type Project, type Ticket } from "@simple-jira/core";
+import { browserCheck, wantsBrowserCheck } from "./browser-check";
 import { db } from "./db";
+import { commentBrowserResult } from "./delivery";
 import { gh, git, resolveGithubToken, run } from "./exec";
 import { createLogger, type TicketLogger } from "./logger";
+import { notify } from "./notify";
 import { conflictStep, renderTask, reopenForConflict } from "./task-file";
 import { reattachWorktree, taskPath } from "./workspace";
 
@@ -59,6 +62,29 @@ async function fillPreviews() {
     if (!url) continue;
     await updateTicket(db, ticket.id, { preview_url: url });
     await addEvent(db, ticket.id, "status", `Preview prête : ${url}`);
+    void checkPreview(ticket.id, url);
+  }
+}
+
+const checking = new Set<string>();
+
+// Runs once per preview, in the background: a failure only adds a warning to the ticket.
+async function checkPreview(ticketId: string, previewUrl: string) {
+  if (checking.has(ticketId)) return;
+  checking.add(ticketId);
+  const ticket = await getTicket(db, ticketId);
+  const log = createLogger(ticket.id, ticket.number);
+  try {
+    const project = await getProject(db, ticket.project_id!);
+    if (!wantsBrowserCheck(project)) return;
+    const result = await browserCheck(ticket, previewUrl, log);
+    if (ticket.pr_url) await commentBrowserResult(project, ticket.pr_url, result);
+    if (!result.ok) log.status("⚠ Test navigateur : à vérifier à la main (voir le journal)");
+  } catch (error) {
+    log.event("browser", `Test navigateur en erreur : ${(error as Error).message}`);
+  } finally {
+    checking.delete(ticketId);
+    await log.flush();
   }
 }
 
@@ -105,6 +131,7 @@ async function handleConflict(ticket: Ticket, log: TicketLogger): Promise<"retry
     writeFileSync(task, renderTask(ticket, project, ticket.branch!, { goal, steps: [step] }), "utf8");
   }
   await updateTicket(db, ticket.id, { status: "queued", worktree_path: worktree, verify_attempts: 0 });
+  log.transition("queued", "conflit de merge à résoudre");
   log.status(`Conflit avec main dans ${files.join(", ")} : l'agent va le résoudre, puis le merge repartira`);
   return "requeued";
 }
@@ -129,7 +156,8 @@ async function runMerges() {
         );
         if (result.code === 0) {
           await updateTicket(db, ticket.id, { status: "merged", merged_at: new Date().toISOString() });
-          log.status("Mergé dans main : Vercel déploie en prod");
+          log.transition("merged", "mergé dans main, Vercel déploie en prod");
+          await notify("merged", ticket, await getProject(db, ticket.project_id!).catch(() => null));
           break;
         }
         if (!/conflict|not mergeable/i.test(result.output) || attempt > 0) {

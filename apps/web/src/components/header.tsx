@@ -6,7 +6,7 @@ import { timeAgo } from "@/lib/format";
 export function Header({ worker }: { worker: WorkerStatus | null }) {
   const online = isWorkerOnline(worker);
   return (
-    <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-zinc-800 pb-4">
+    <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-zinc-800 pb-4 pl-12 lg:pl-0">
       <Link href="/" className="text-lg font-semibold tracking-tight">
         simple-jira
       </Link>

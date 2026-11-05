@@ -29,14 +29,23 @@ export const config = {
   githubOwner: process.env.GITHUB_OWNER || null,
   runnerScript: process.env.RUNNER_SCRIPT ?? join(projectsRoot, "autoclick", "run_headless.ps1"),
   runnerEngine: process.env.RUNNER_ENGINE ?? "claude",
+  // "node": the worker drives Claude Code itself with stream-json (live journal). "script": run_headless.ps1.
+  runnerMode: process.env.RUNNER_MODE === "script" ? "script" : "node",
+  claudeBin: process.env.CLAUDE_BIN ?? "claude",
   runnerTimeoutMs: number("RUNNER_TIMEOUT_MIN", 180) * 60_000,
   commandTimeoutMs: number("COMMAND_TIMEOUT_MIN", 15) * 60_000,
   maxVerifyAttempts: number("MAX_VERIFY_ATTEMPTS", 2),
   pollIntervalMs: number("POLL_INTERVAL_SEC", 300) * 1000,
+  dashboardUrl: (process.env.DASHBOARD_URL ?? "").replace(/\/+$/, ""),
+  notifyUrl: process.env.NOTIFY_URL || null,
+  browserCheck: process.env.BROWSER_CHECK !== "0",
+  browserChannel: process.env.BROWSER_CHANNEL ?? "msedge",
+  screensDir: process.env.SCREENS_DIR ?? join(projectsRoot, ".simple-jira", "screens"),
+  runForMs: process.env.RUN_FOR_HOURS ? number("RUN_FOR_HOURS", 12) * 3_600_000 : null,
 };
 
 // Worker secrets never reach the agent or the project's own scripts.
-const STRIPPED_ENV = ["SUPABASE_URL", "SUPABASE_SECRET_KEY", "GH_TOKEN", "GITHUB_TOKEN"];
+const STRIPPED_ENV = ["SUPABASE_URL", "SUPABASE_SECRET_KEY", "GH_TOKEN", "GITHUB_TOKEN", "NOTIFY_URL"];
 
 export function childEnv(): NodeJS.ProcessEnv {
   const env = { ...process.env };

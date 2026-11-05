@@ -1,6 +1,6 @@
 "use client";
 
-import type { Project } from "@simple-jira/core";
+import { EFFORTS, type Project } from "@simple-jira/core";
 import { useActionState } from "react";
 import { saveProjectAction } from "@/app/actions";
 
@@ -77,6 +77,32 @@ export function ProjectForm({ project }: { project?: Project }) {
         value={project?.ship_command}
         placeholder={'powershell -File scripts/ship.ps1 -Message "<why>"'}
       />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Field name="default_model" label="Modèle par défaut" value={project?.default_model ?? ""} placeholder="CLI par défaut" />
+        <div>
+          <label className="label" htmlFor="default_effort">
+            Effort par défaut
+          </label>
+          <select id="default_effort" name="default_effort" defaultValue={project?.default_effort ?? ""} className="input">
+            <option value="">CLI par défaut</option>
+            {EFFORTS.map((effort) => (
+              <option key={effort} value={effort}>
+                {effort}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Field name="notify_url" label="Notifications (URL ntfy)" value={project?.notify_url ?? ""} placeholder="NOTIFY_URL du worker" />
+      </div>
+      <label className="flex items-center gap-2 text-sm text-zinc-300">
+        <input
+          type="checkbox"
+          name="browser_check"
+          defaultChecked={project?.browser_check !== false}
+          className="h-4 w-4 accent-sky-500"
+        />
+        Test navigateur sur la preview (captures et erreurs console)
+      </label>
       <div>
         <label className="label" htmlFor="agent_instructions">
           Consignes pour l&apos;agent
@@ -84,7 +110,7 @@ export function ProjectForm({ project }: { project?: Project }) {
         <textarea
           id="agent_instructions"
           name="agent_instructions"
-          rows={2}
+          rows={4}
           defaultValue={project?.agent_instructions}
           className="input"
         />

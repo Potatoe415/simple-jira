@@ -82,7 +82,14 @@ async function main() {
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 
+  const deadline = config.runForMs ? Date.now() + config.runForMs : null;
+  if (deadline) console.log(`Arrêt automatique prévu à ${new Date(deadline).toLocaleString("fr-FR")}`);
+
   while (!stopping) {
+    if (deadline && Date.now() >= deadline) {
+      console.log("Durée écoulée : arrêt du worker.");
+      break;
+    }
     let ticket: Ticket | null = null;
     try {
       ticket = await claim();
