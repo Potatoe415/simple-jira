@@ -10,6 +10,7 @@ export function Header({ worker }: { worker: WorkerStatus | null }) {
       <Link href="/" className="text-lg font-semibold tracking-tight">
         simple-jira
       </Link>
+      <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-xs text-zinc-400">v0.01</span>
       <span
         className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${
           online ? "bg-emerald-950 text-emerald-300" : "bg-zinc-800 text-zinc-400"
