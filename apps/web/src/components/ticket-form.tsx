@@ -16,7 +16,7 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="project">
-            Projet
+            Project
           </label>
           <select
             id="project"
@@ -30,7 +30,7 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
                 {p.name}
               </option>
             ))}
-            <option value={NEW_PROJECT}>+ Nouveau projet</option>
+            <option value={NEW_PROJECT}>+ New project</option>
           </select>
         </div>
         {!isNew && (
@@ -39,8 +39,8 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
               Type
             </label>
             <select id="type" name="type" className="input" defaultValue="fix">
-              <option value="fix">Correctif</option>
-              <option value="feature">Fonctionnalité</option>
+              <option value="fix">Fix</option>
+              <option value="feature">Feature</option>
             </select>
           </div>
         )}
@@ -50,13 +50,13 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="new_name">
-              Nom du projet
+              Project name
             </label>
-            <input id="new_name" name="new_name" required className="input" placeholder="Mon super jeu" />
+            <input id="new_name" name="new_name" required className="input" placeholder="My great game" />
           </div>
           <div>
             <label className="label" htmlFor="new_slug">
-              Slug (nom du repo)
+              Slug (repo name)
             </label>
             <input
               id="new_slug"
@@ -64,7 +64,7 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
               required
               pattern="[a-z0-9][a-z0-9\-]*"
               className="input"
-              placeholder="mon-super-jeu"
+              placeholder="my-great-game"
             />
           </div>
         </div>
@@ -72,13 +72,13 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
 
       <div>
         <label className="label" htmlFor="title">
-          Titre
+          Title
         </label>
         <input id="title" name="title" required maxLength={200} className="input" />
       </div>
       <div>
         <label className="label" htmlFor="description">
-          Demande
+          Request
         </label>
         <textarea
           id="description"
@@ -86,46 +86,46 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
           required
           rows={4}
           className="input"
-          placeholder="Ce qui ne va pas, ou ce que tu veux. Comme tu le dirais à voix haute."
+          placeholder="What is wrong, or what you want. As you would say it out loud."
         />
       </div>
       <div>
         <label className="label" htmlFor="goal">
-          Objectif (&quot;fini&quot; =)
+          Goal (&quot;done&quot; =)
         </label>
-        <input id="goal" name="goal" className="input" placeholder="Optionnel : par défaut, le titre" />
+        <input id="goal" name="goal" className="input" placeholder="Optional: defaults to the title" />
       </div>
       <div>
         <label className="label" htmlFor="steps">
-          Étapes <span className="normal-case text-zinc-500">(une par ligne, optionnel)</span>
+          Steps <span className="normal-case text-zinc-500">(one per line, optional)</span>
         </label>
         <textarea id="steps" name="steps" rows={4} className="input font-mono" />
       </div>
       <div className="w-40">
         <label className="label" htmlFor="priority">
-          Priorité
+          Priority
         </label>
         <select id="priority" name="priority" className="input" defaultValue="3">
-          <option value="1">1 : urgent</option>
+          <option value="1">1: urgent</option>
           <option value="2">2</option>
-          <option value="3">3 : normal</option>
+          <option value="3">3: normal</option>
         </select>
       </div>
       <details className="rounded-md border border-zinc-800 px-3 py-2">
-        <summary className="cursor-pointer text-sm text-zinc-400">Options avancées</summary>
+        <summary className="cursor-pointer text-sm text-zinc-400">Advanced options</summary>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="model">
-              Modèle
+              Model
             </label>
-            <input id="model" name="model" className="input" placeholder="Défaut du projet (ex. opus, sonnet)" />
+            <input id="model" name="model" className="input" placeholder="Project default (e.g. opus, sonnet)" />
           </div>
           <div>
             <label className="label" htmlFor="effort">
               Effort
             </label>
             <select id="effort" name="effort" className="input" defaultValue="">
-              <option value="">Défaut du projet</option>
+              <option value="">Project default</option>
               {EFFORTS.map((effort) => (
                 <option key={effort} value={effort}>
                   {effort}
@@ -135,19 +135,19 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
           </div>
           <div>
             <label className="label" htmlFor="parent">
-              Ticket parent
+              Parent ticket
             </label>
             <input id="parent" name="parent" className="input" placeholder="#12" />
           </div>
           <div>
             <label className="label" htmlFor="blocked_by">
-              Dépend de
+              Depends on
             </label>
-            <input id="blocked_by" name="blocked_by" className="input" placeholder="#12, #14 : attend leur PR" />
+            <input id="blocked_by" name="blocked_by" className="input" placeholder="#12, #14: waits for their PR" />
           </div>
           <div className="sm:col-span-2">
             <label className="label" htmlFor="check_paths">
-              Pages à tester sur la preview <span className="normal-case text-zinc-500">(une par ligne, défaut /)</span>
+              Pages to test on the preview <span className="normal-case text-zinc-500">(one per line, default /)</span>
             </label>
             <textarea id="check_paths" name="check_paths" rows={2} className="input font-mono" placeholder="/projects" />
           </div>
@@ -155,11 +155,11 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
       </details>
       <label className="flex items-center gap-2 text-sm text-zinc-300">
         <input type="checkbox" name="auto_merge" className="h-4 w-4 accent-emerald-500" />
-        Direct en prod (merge automatique dès que la PR est prête)
+        Straight to prod (auto-merge as soon as the PR is ready)
       </label>
       <div className="flex items-center gap-3">
         <button className="btn" disabled={pending}>
-          {pending ? "Création…" : "Mettre en file"}
+          {pending ? "Creating…" : "Queue it"}
         </button>
         {state.error && <span className="whitespace-pre-wrap text-sm text-red-400">{state.error}</span>}
       </div>

@@ -125,7 +125,7 @@ export function taskState(text: string): TaskState {
   const kind = (status?.[1]?.toUpperCase() as "DONE" | "BLOCKED" | undefined) ?? null;
   return {
     status: kind,
-    blockedReason: kind === "BLOCKED" ? status![2]!.replace(/^\s*:\s*/, "").trim() || "Blocage sans détail" : null,
+    blockedReason: kind === "BLOCKED" ? status![2]!.replace(/^\s*:\s*/, "").trim() || "Blocked without details" : null,
     open: [...text.matchAll(OPEN_STEP_RE)].length,
     done: [...text.matchAll(DONE_STEP_RE)].length,
   };
@@ -170,7 +170,7 @@ export function learnings(text: string): { key: string; body: string }[] {
 export function applyOwnerComments(path: string, comments: TicketEvent[]) {
   let text = readTask(path);
   for (const comment of comments) {
-    const at = new Date(comment.created_at).toLocaleString("fr-FR", { timeZone: "Europe/Paris" });
+    const at = new Date(comment.created_at).toLocaleString("en-GB", { timeZone: "Europe/Paris" });
     text = appendToNotes(text, `Owner comment (via simple-jira, ${at}):\n${comment.message}`);
   }
   writeFileSync(path, text, "utf8");

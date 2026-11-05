@@ -61,7 +61,7 @@ async function fillPreviews() {
     const url = await findPreviewUrl(await getProject(db, ticket.project_id), ticket.pr_url);
     if (!url) continue;
     await updateTicket(db, ticket.id, { preview_url: url });
-    await addEvent(db, ticket.id, "status", `Preview prête : ${url}`);
+    await addEvent(db, ticket.id, "status", `Preview ready: ${url}`);
     void checkPreview(ticket.id, url);
   }
 }
@@ -79,9 +79,9 @@ async function checkPreview(ticketId: string, previewUrl: string) {
     if (!wantsBrowserCheck(project)) return;
     const result = await browserCheck(ticket, previewUrl, log);
     if (ticket.pr_url) await commentBrowserResult(project, ticket.pr_url, result);
-    if (!result.ok) log.status("⚠ Test navigateur : à vérifier à la main (voir le journal)");
+    if (!result.ok) log.status("⚠ Browser test: check by hand (see the log)");
   } catch (error) {
-    log.event("browser", `Test navigateur en erreur : ${(error as Error).message}`);
+    log.event("browser", `Browser test error: ${(error as Error).message}`);
   } finally {
     checking.delete(ticketId);
     await log.flush();
@@ -116,7 +116,7 @@ async function handleConflict(ticket: Ticket, log: TicketLogger): Promise<"retry
   const merge = await run("git", ["merge", "--no-edit", `origin/${project.default_branch}`], { cwd: worktree });
   if (merge.code === 0) {
     await git(["push", "origin", `HEAD:refs/heads/${ticket.branch}`], worktree);
-    log.status(`main intégré dans ${ticket.branch} sans conflit : nouvel essai de merge`);
+    log.status(`main merged into ${ticket.branch} without conflict: retrying the merge`);
     await updateTicket(db, ticket.id, { worktree_path: worktree });
     return "retry";
   }
@@ -131,8 +131,8 @@ async function handleConflict(ticket: Ticket, log: TicketLogger): Promise<"retry
     writeFileSync(task, renderTask(ticket, project, ticket.branch!, { goal, steps: [step] }), "utf8");
   }
   await updateTicket(db, ticket.id, { status: "queued", worktree_path: worktree, verify_attempts: 0 });
-  log.transition("queued", "conflit de merge à résoudre");
-  log.status(`Conflit avec main dans ${files.join(", ")} : l'agent va le résoudre, puis le merge repartira`);
+  log.transition("queued", "merge conflict to resolve");
+  log.status(`Conflict with main in ${files.join(", ")}: the agent will resolve it, then the merge will restart`);
   return "requeued";
 }
 
@@ -156,7 +156,7 @@ async function runMerges() {
         );
         if (result.code === 0) {
           await updateTicket(db, ticket.id, { status: "merged", merged_at: new Date().toISOString() });
-          log.transition("merged", "mergé dans main, Vercel déploie en prod");
+          log.transition("merged", "merged into main, Vercel deploys to prod");
           await notify("merged", ticket, await getProject(db, ticket.project_id!).catch(() => null));
           break;
         }
@@ -167,7 +167,7 @@ async function runMerges() {
       }
     } catch (mergeError) {
       await updateTicket(db, ticket.id, { merge_requested_at: null });
-      log.error(`Merge refusé : ${(mergeError as Error).message}`);
+      log.error(`Merge refused: ${(mergeError as Error).message}`);
     } finally {
       await log.flush();
     }

@@ -14,7 +14,7 @@ export default async function ProjectsPage() {
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
       <Header worker={worker} />
-      <h1 className="mb-4 text-xl font-semibold">Projets</h1>
+      <h1 className="mb-4 text-xl font-semibold">Projects</h1>
 
       <ul className="mb-8 space-y-3">
         {projects.map((project, index) => (
@@ -23,14 +23,14 @@ export default async function ProjectsPage() {
               <summary className="cursor-pointer">
                 <span className="font-medium">{project.name}</span>{" "}
                 <span className="text-sm text-zinc-500">
-                  {project.repo} · vérif : {project.verify_commands.join(" && ") || "aucune"}
+                  {project.repo} · verify: {project.verify_commands.join(" && ") || "none"}
                 </span>
               </summary>
               <div className="mt-4">
                 <ProjectForm project={project} />
               </div>
               <div className="mt-6 border-t border-zinc-800 pt-4">
-                <h2 className="label">Mémoire du projet ({memories[index]!.length})</h2>
+                <h2 className="label">Project memory ({memories[index]!.length})</h2>
                 <MemoryEditor projectId={project.id} memory={memories[index]!} />
               </div>
             </details>
@@ -40,7 +40,7 @@ export default async function ProjectsPage() {
 
       <details className="card">
         <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wide text-zinc-400">
-          Ajouter un projet existant
+          Add an existing project
         </summary>
         <div className="mt-4">
           <ProjectForm />

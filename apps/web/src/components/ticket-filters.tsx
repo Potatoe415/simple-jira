@@ -18,16 +18,16 @@ export function TicketFilters({
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-48 flex-1">
           <label className="label" htmlFor="q">
-            Recherche
+            Search
           </label>
-          <input id="q" name="q" defaultValue={filters.q} placeholder="Titre ou #numéro" className="input" />
+          <input id="q" name="q" defaultValue={filters.q} placeholder="Title or #number" className="input" />
         </div>
         <div>
           <label className="label" htmlFor="f-project">
-            Projet
+            Project
           </label>
           <select id="f-project" name="project" defaultValue={filters.project} className="input w-auto">
-            <option value="">Tous</option>
+            <option value="">All</option>
             {projects.map((project) => (
               <option key={project.slug} value={project.slug}>
                 {project.name}
@@ -37,10 +37,10 @@ export function TicketFilters({
         </div>
         <div>
           <label className="label" htmlFor="f-priority">
-            Priorité
+            Priority
           </label>
           <select id="f-priority" name="priority" defaultValue={filters.priority ?? ""} className="input w-auto">
-            <option value="">Toutes</option>
+            <option value="">All</option>
             {PRIORITIES.map((priority) => (
               <option key={priority} value={priority}>
                 P{priority}
@@ -53,7 +53,7 @@ export function TicketFilters({
             Type
           </label>
           <select id="f-type" name="type" defaultValue={filters.type ?? ""} className="input w-auto">
-            <option value="">Tous</option>
+            <option value="">All</option>
             {TICKET_TYPES.map((type) => (
               <option key={type} value={type}>
                 {TYPE_LABELS[type]}
@@ -63,7 +63,7 @@ export function TicketFilters({
         </div>
       </div>
       <fieldset>
-        <legend className="label">Statut</legend>
+        <legend className="label">Status</legend>
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {TICKET_STATUSES.map((status) => (
             <label key={status} className="flex items-center gap-1.5 text-sm text-zinc-300">
@@ -80,12 +80,12 @@ export function TicketFilters({
         </div>
       </fieldset>
       <div className="flex items-center gap-3">
-        <button className="btn">Filtrer</button>
+        <button className="btn">Filter</button>
         <Link href="/" className="btn-ghost">
-          Réinitialiser
+          Reset
         </Link>
         <span className="ml-auto text-sm text-zinc-400" aria-live="polite">
-          {count} ticket{count > 1 ? "s" : ""} affiché{count > 1 ? "s" : ""}
+          {count} ticket{count === 1 ? "" : "s"} shown
         </span>
       </div>
     </form>

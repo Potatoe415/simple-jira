@@ -31,12 +31,12 @@ export function AnswerForm({ questionId, options }: { questionId: string; option
         name="answer"
         rows={2}
         required
-        placeholder="Ta réponse, en une phrase"
+        placeholder="Your answer, in one sentence"
         className="input"
       />
       <div className="flex items-center gap-3">
         <button className="btn" disabled={pending}>
-          {pending ? "Envoi…" : "Répondre et débloquer"}
+          {pending ? "Sending…" : "Answer and unblock"}
         </button>
         {state.error && <span className="text-sm text-red-400">{state.error}</span>}
       </div>

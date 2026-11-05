@@ -82,11 +82,11 @@ async function runClaude(options: RunnerOptions): Promise<RunnerResult> {
     if (signal.aborted) return { ...last, aborted: true, output, costUsd };
     const before = taskState(readTask(task));
     if (before.status) {
-      log.info(`Stop : STATUS: ${before.status}`);
+      log.info(`Stop: STATUS: ${before.status}`);
       break;
     }
     if (before.open === 0) {
-      log.info("Stop : plus aucune étape ouverte");
+      log.info("Stop: no open step left");
       break;
     }
     const remaining = deadline - Date.now();
@@ -94,7 +94,7 @@ async function runClaude(options: RunnerOptions): Promise<RunnerResult> {
 
     await options.beforePass?.();
     const text = readTask(task);
-    log.info(`Passe ${pass}/${MAX_RUNS} : ${before.open} étape(s) ouverte(s)`);
+    log.info(`Pass ${pass}/${MAX_RUNS}: ${before.open} open step(s)`);
     const parser = createStreamParser({ worktree, verifyCommands: options.verifyCommands, log });
     last = await run(config.claudeBin, [...args, TASK_PROMPT], {
       cwd: worktree,
@@ -108,7 +108,7 @@ async function runClaude(options: RunnerOptions): Promise<RunnerResult> {
 
     if (last.code !== 0) {
       failures += 1;
-      log.error(`Claude Code a quitté avec le code ${last.code} (${failures}/${MAX_FAILURES})`);
+      log.error(`Claude Code exited with code ${last.code} (${failures}/${MAX_FAILURES})`);
       if (failures >= MAX_FAILURES) break;
       await sleep(30_000, signal);
       continue;
@@ -117,7 +117,7 @@ async function runClaude(options: RunnerOptions): Promise<RunnerResult> {
 
     if (readTask(task) === text) {
       stalled += 1;
-      log.info(`TASK.md inchangé après la passe (${stalled}/${MAX_STALLED})`);
+      log.info(`TASK.md unchanged after the pass (${stalled}/${MAX_STALLED})`);
       if (stalled >= MAX_STALLED) break;
     } else {
       stalled = 0;

@@ -15,20 +15,20 @@ export function Header({ worker }: { worker: WorkerStatus | null }) {
         className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${
           online ? "bg-emerald-950 text-emerald-300" : "bg-zinc-800 text-zinc-400"
         }`}
-        title={worker ? `${worker.hostname}, vu ${timeAgo(worker.last_seen_at)}` : "jamais vu"}
+        title={worker ? `${worker.hostname}, seen ${timeAgo(worker.last_seen_at)}` : "never seen"}
       >
         <span className={`h-2 w-2 rounded-full ${online ? "bg-emerald-400" : "bg-zinc-500"}`} />
-        {online ? "Worker en ligne" : "Worker hors ligne"}
+        {online ? "Worker online" : "Worker offline"}
       </span>
       <nav className="ml-auto flex items-center gap-3 text-sm text-zinc-400">
         <Link href="/" className="hover:text-zinc-100">
-          Tableau de bord
+          Dashboard
         </Link>
         <Link href="/projects" className="hover:text-zinc-100">
-          Projets
+          Projects
         </Link>
         <form action={signOutAction}>
-          <button className="hover:text-zinc-100">Déconnexion</button>
+          <button className="hover:text-zinc-100">Sign out</button>
         </form>
       </nav>
     </header>

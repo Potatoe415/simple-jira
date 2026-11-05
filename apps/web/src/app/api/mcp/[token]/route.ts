@@ -27,28 +27,28 @@ import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { adminDb } from "@/lib/supabase/admin";
 
-const INSTRUCTIONS = `simple-jira transforme des demandes dictées en tickets exécutés sans surveillance par Claude Code sur le PC de l'utilisateur, livrés en pull request.
-- Avant de créer un ticket, appelle list_projects et déduis le projet visé (les surnoms comptent). Si c'est ambigu, demande à l'utilisateur au lieu de deviner.
-- Le type est "fix" pour un bug, "feature" pour une évolution, "new_project" pour un projet qui n'existe pas encore.
-- Dans description, garde fidèlement la demande de l'utilisateur et ajoute les précisions obtenues en conversation. Ne l'invente pas.
-- L'agent ne pourra poser aucune question en cours de route : avant de créer le ticket, clarifie avec l'utilisateur les choix produit importants (règles, comportement attendu, où ça s'affiche).
-- goal : une ou deux phrases qui décrivent "fini" de façon vérifiable.
-- steps : 3 à 10 étapes petites, concrètes, vérifiables, dans l'ordre, en anglais. N'inclus pas la lecture des docs du projet, la commande de vérification ni le commit/push : le worker les ajoute.
-- slug : 2 à 4 mots en kebab-case anglais, il sert de nom de branche (feat/<slug>).
-- priority : 3 par défaut. 1 si l'utilisateur dit "priorité un", "urgent", "en premier" ; 2 s'il dit "priorité deux". Les tickets en file passent par priorité (1 d'abord), puis par ancienneté ; un ticket déjà en cours n'est pas interrompu. Pour un ticket existant, utilise set_priority.
-- auto_merge : true uniquement si l'utilisateur dit explicitement "direct en prod", "mets en prod", "merge direct" ou équivalent. Sinon false : la PR attend sa validation.
-- Quand l'utilisateur demande s'il y a des questions ou des nouvelles, appelle list_open_questions puis list_tickets.
-- Pour répondre à une question d'un agent, appelle answer_question avec la réponse de l'utilisateur, sans la reformuler au point d'en changer le sens.
-- Pour transmettre une précision à un agent qui travaille (sans qu'il soit bloqué), appelle comment_ticket : il la lit avant sa prochaine passe.
-- model / effort : seulement si l'utilisateur le demande ("en opus", "effort max"). Sinon laisse vide : le défaut du projet s'applique.
-- Pour découper une grosse demande, crée le ticket parent puis des sous-tickets (create_sub_ticket ou parent_id). blocked_by liste les tickets qui doivent avoir une PR prête ou être en prod avant que celui-ci démarre.`;
+const INSTRUCTIONS = `simple-jira turns dictated requests into tickets that Claude Code runs unattended on the user's PC, delivered as pull requests.
+- Before creating a ticket, call list_projects and infer the target project (aliases count). If it is ambiguous, ask the user instead of guessing.
+- type is "fix" for a bug, "feature" for an enhancement, "new_project" for a project that does not exist yet.
+- In description, keep the user's request faithful and add the details gathered in conversation. Do not invent anything.
+- The agent cannot ask any question along the way: before creating the ticket, clarify important product choices with the user (rules, expected behavior, where it is displayed).
+- goal: one or two sentences describing "done" in a verifiable way.
+- steps: 3 to 10 small, concrete, verifiable steps, in order, in English. Do not include reading the project docs, the verify command or commit/push: the worker adds them.
+- slug: 2 to 4 words in English kebab-case, used as the branch name (feat/<slug>).
+- priority: 3 by default. 1 if the user says "priority one", "urgent", "first"; 2 if they say "priority two". Queued tickets are picked by priority (1 first), then by age; a ticket already running is not interrupted. For an existing ticket, use set_priority.
+- auto_merge: true only if the user explicitly says "straight to prod", "ship to prod", "merge directly" or equivalent. Otherwise false: the PR waits for review.
+- When the user asks whether there are questions or news, call list_open_questions then list_tickets.
+- To answer an agent's question, call answer_question with the user's answer, without rephrasing it to the point of changing its meaning.
+- To pass a clarification to an agent that is working (not blocked), call comment_ticket: it reads it before its next pass.
+- model / effort: only if the user asks for it ("use opus", "max effort"). Otherwise leave empty: the project default applies.
+- To split a big request, create the parent ticket then sub-tickets (create_sub_ticket or parent_id). blocked_by lists the tickets that must have a ready PR or be in prod before this one starts.`;
 
 function text(value: string) {
   return { content: [{ type: "text" as const, text: value }] };
 }
 
 function failure(error: unknown) {
-  return { ...text(`Erreur : ${error instanceof Error ? error.message : String(error)}`), isError: true };
+  return { ...text(`Error: ${error instanceof Error ? error.message : String(error)}`), isError: true };
 }
 
 function ticketLine(ticket: TicketWithProject) {
@@ -63,19 +63,19 @@ const handler = createMcpHandler(
     server.registerTool(
       "list_projects",
       {
-        title: "Lister les projets",
-        description: "Liste les projets connus avec leurs surnoms, pour déduire à quel projet une demande s'applique.",
+        title: "List projects",
+        description: "Lists known projects with their aliases, to infer which project a request applies to.",
         inputSchema: z.object({}),
       },
       async () => {
         try {
           const projects = await listProjects(adminDb());
-          if (!projects.length) return text("Aucun projet enregistré.");
+          if (!projects.length) return text("No registered projects.");
           return text(
             projects
               .map(
                 (p) =>
-                  `- slug: ${p.slug} | nom: ${p.name} | surnoms: ${p.aliases.join(", ") || "-"}\n  ${p.description || ""}`,
+                  `- slug: ${p.slug} | name: ${p.name} | aliases: ${p.aliases.join(", ") || "-"}\n  ${p.description || ""}`,
               )
               .join("\n"),
           );
@@ -88,55 +88,55 @@ const handler = createMcpHandler(
     server.registerTool(
       "create_ticket",
       {
-        title: "Créer un ticket",
+        title: "Create a ticket",
         description:
-          "Met une tâche dans la file. Un agent la prendra sur le PC de l'utilisateur et livrera une pull request. Pour un projet existant, fournis project_slug. Pour un nouveau projet, type new_project et new_project.",
+          "Queues a task. An agent will pick it up on the user's PC and deliver a pull request. For an existing project, provide project_slug. For a new project, use type new_project and new_project.",
         inputSchema: z.object({
           type: z.enum(TICKET_TYPES),
-          project_slug: z.string().optional().describe("slug renvoyé par list_projects (sauf new_project)"),
-          title: z.string().min(1).max(200).describe("titre court et explicite"),
-          description: z.string().min(1).describe("la demande complète, fidèle à l'utilisateur"),
-          goal: z.string().min(1).describe("une ou deux phrases : à quoi ressemble 'fini'"),
+          project_slug: z.string().optional().describe("slug returned by list_projects (except new_project)"),
+          title: z.string().min(1).max(200).describe("short, explicit title"),
+          description: z.string().min(1).describe("the full request, faithful to the user"),
+          goal: z.string().min(1).describe("one or two sentences: what 'done' looks like"),
           steps: z
             .array(z.string().min(1))
             .min(1)
             .max(15)
-            .describe("étapes concrètes et vérifiables, en anglais, sans docs/check/commit"),
+            .describe("concrete, verifiable steps, in English, without docs/check/commit"),
           slug: z
             .string()
             .regex(/^[a-z0-9][a-z0-9-]{0,47}$/)
-            .describe("kebab-case anglais court, nom de branche"),
+            .describe("short English kebab-case, branch name"),
           auto_merge: z
             .boolean()
             .default(false)
-            .describe("true seulement si l'utilisateur dit explicitement de mettre direct en prod"),
+            .describe("true only if the user explicitly says to go straight to prod"),
           priority: z
             .number()
             .int()
             .min(1)
             .max(3)
             .default(3)
-            .describe("1 = urgent, passe avant les autres ; 3 = défaut. 1 ou 2 seulement si l'utilisateur le demande"),
+            .describe("1 = urgent, goes before the others; 3 = default. 1 or 2 only if the user asks for it"),
           model: z
             .string()
             .regex(MODEL_RE)
             .optional()
-            .describe("modèle Claude (ex. opus, sonnet), seulement si l'utilisateur le demande"),
-          effort: z.enum(EFFORTS).optional().describe("effort de raisonnement, seulement si l'utilisateur le demande"),
+            .describe("Claude model (e.g. opus, sonnet), only if the user asks for it"),
+          effort: z.enum(EFFORTS).optional().describe("reasoning effort, only if the user asks for it"),
           blocked_by: z
             .array(z.number().int().positive())
             .max(20)
             .optional()
-            .describe("numéros des tickets qui doivent être livrés (PR prête ou en prod) avant celui-ci"),
+            .describe("numbers of the tickets that must be delivered (PR ready or in prod) before this one"),
           check_paths: z
             .array(z.string().regex(/^\/\S*$/))
             .max(10)
             .optional()
-            .describe("pages à ouvrir sur la preview pour le test navigateur, ex. [\"/\", \"/settings\"]"),
-          parent_id: z.number().int().positive().optional().describe("numéro du ticket parent, pour un sous-ticket"),
+            .describe("pages to open on the preview for the browser test, e.g. [\"/\", \"/settings\"]"),
+          parent_id: z.number().int().positive().optional().describe("parent ticket number, for a sub-ticket"),
           new_project: z
             .object({
-              slug: z.string().describe("minuscules, chiffres et tirets, servira de nom de repo"),
+              slug: z.string().describe("lowercase letters, digits and dashes, used as the repo name"),
               name: z.string(),
               description: z.string(),
             })
@@ -146,9 +146,9 @@ const handler = createMcpHandler(
       async (input) => {
         try {
           const ticket = await createTicket(adminDb(), { ...input, blocked_by: input.blocked_by ?? [], source: "mcp" });
-          const delivery = ticket.auto_merge ? "mergé direct en prod une fois livré" : "livré en PR à valider";
+          const delivery = ticket.auto_merge ? "merged straight to prod once delivered" : "delivered as a PR to review";
           return text(
-            `Ticket #${ticket.number} créé (${TYPE_LABELS[ticket.type]}, priorité ${ticket.priority}) : ${ticket.title}. En file, le worker le prendra dans les 5 minutes ; ${delivery}.`,
+            `Ticket #${ticket.number} created (${TYPE_LABELS[ticket.type]}, priority ${ticket.priority}): ${ticket.title}. Queued, the worker will pick it up within 5 minutes; ${delivery}.`,
           );
         } catch (error) {
           return failure(error);
@@ -159,11 +159,11 @@ const handler = createMcpHandler(
     server.registerTool(
       "create_sub_ticket",
       {
-        title: "Créer un sous-ticket",
+        title: "Create a sub-ticket",
         description:
-          "Crée un ticket enfant d'un ticket existant, dans le même projet. Même format que create_ticket (goal, steps, slug...).",
+          "Creates a child ticket of an existing ticket, in the same project. Same format as create_ticket (goal, steps, slug...).",
         inputSchema: z.object({
-          parent: z.number().int().positive().describe("numéro du ticket parent"),
+          parent: z.number().int().positive().describe("parent ticket number"),
           type: z.enum(["fix", "feature"]).default("feature"),
           title: z.string().min(1).max(200),
           description: z.string().min(1),
@@ -176,18 +176,18 @@ const handler = createMcpHandler(
             .string()
             .regex(MODEL_RE)
             .optional()
-            .describe("modèle Claude (ex. opus, sonnet), seulement si l'utilisateur le demande"),
-          effort: z.enum(EFFORTS).optional().describe("effort de raisonnement, seulement si l'utilisateur le demande"),
+            .describe("Claude model (e.g. opus, sonnet), only if the user asks for it"),
+          effort: z.enum(EFFORTS).optional().describe("reasoning effort, only if the user asks for it"),
           blocked_by: z
             .array(z.number().int().positive())
             .max(20)
             .optional()
-            .describe("numéros des tickets qui doivent être livrés (PR prête ou en prod) avant celui-ci"),
+            .describe("numbers of the tickets that must be delivered (PR ready or in prod) before this one"),
           check_paths: z
             .array(z.string().regex(/^\/\S*$/))
             .max(10)
             .optional()
-            .describe("pages à ouvrir sur la preview pour le test navigateur, ex. [\"/\", \"/settings\"]"),
+            .describe("pages to open on the preview for the browser test, e.g. [\"/\", \"/settings\"]"),
         }),
       },
       async ({ parent, ...input }) => {
@@ -197,7 +197,7 @@ const handler = createMcpHandler(
             blocked_by: input.blocked_by ?? [],
             source: "mcp",
           });
-          return text(`Sous-ticket #${ticket.number} créé sous #${parent} : ${ticket.title}.`);
+          return text(`Sub-ticket #${ticket.number} created under #${parent}: ${ticket.title}.`);
         } catch (error) {
           return failure(error);
         }
@@ -207,24 +207,24 @@ const handler = createMcpHandler(
     server.registerTool(
       "comment_ticket",
       {
-        title: "Commenter un ticket",
+        title: "Comment on a ticket",
         description:
-          "Transmet un message de l'utilisateur à l'agent qui travaille sur le ticket (précision, changement de cap). Il est ajouté aux notes de l'agent avant sa prochaine passe. Pour un ticket bloqué, préfère answer_question.",
+          "Passes a user message to the agent working on the ticket (clarification, change of course). It is added to the agent's notes before its next pass. For a blocked ticket, prefer answer_question.",
         inputSchema: z.object({
           number: z.number().int().positive(),
-          comment: z.string().min(1).max(4000).describe("le message de l'utilisateur, fidèle"),
+          comment: z.string().min(1).max(4000).describe("the user's message, verbatim"),
         }),
       },
       async ({ number, comment }) => {
         try {
           const db = adminDb();
           const ticket = await getTicketByNumber(db, number);
-          if (!ticket) return failure(new Error(`Ticket #${number} introuvable`));
+          if (!ticket) return failure(new Error(`Ticket #${number} not found`));
           await addOwnerComment(db, ticket.id, comment);
           const when = ACTIVE_STATUSES.includes(ticket.status)
-            ? "L'agent le lira avant sa prochaine passe."
-            : "Le ticket n'est plus actif : relance-le (retry_ticket) pour que l'agent en tienne compte.";
-          return text(`Commentaire ajouté au ticket #${number}. ${when}`);
+            ? "The agent will read it before its next pass."
+            : "The ticket is no longer active: retry it (retry_ticket) so the agent takes it into account.";
+          return text(`Comment added to ticket #${number}. ${when}`);
         } catch (error) {
           return failure(error);
         }
@@ -234,18 +234,18 @@ const handler = createMcpHandler(
     server.registerTool(
       "list_open_questions",
       {
-        title: "Questions en attente",
-        description: "Liste les questions bloquantes posées par les agents, auxquelles l'utilisateur doit répondre.",
+        title: "Open questions",
+        description: "Lists the blocking questions asked by agents, which the user must answer.",
         inputSchema: z.object({}),
       },
       async () => {
         try {
           const questions = await listOpenQuestions(adminDb());
-          if (!questions.length) return text("Aucune question en attente.");
+          if (!questions.length) return text("No open questions.");
           return text(
             questions
               .map((q) => {
-                const options = q.options.length ? `\n  Options : ${q.options.join(" / ")}` : "";
+                const options = q.options.length ? `\n  Options: ${q.options.join(" / ")}` : "";
                 const project = q.ticket.project?.name ?? "?";
                 return `- question_id: ${q.id}\n  Ticket #${q.ticket.number} (${project}) — ${q.ticket.title}\n  ${q.question}${options}`;
               })
@@ -260,8 +260,8 @@ const handler = createMcpHandler(
     server.registerTool(
       "answer_question",
       {
-        title: "Répondre à une question",
-        description: "Transmet la réponse de l'utilisateur à l'agent bloqué, qui reprend alors son travail.",
+        title: "Answer a question",
+        description: "Passes the user's answer to the blocked agent, which then resumes its work.",
         inputSchema: z.object({
           question_id: z.string().uuid(),
           answer: z.string().min(1),
@@ -270,7 +270,7 @@ const handler = createMcpHandler(
       async ({ question_id, answer }) => {
         try {
           await answerQuestion(adminDb(), question_id, answer);
-          return text("Réponse transmise. L'agent va reprendre.");
+          return text("Answer sent. The agent will resume.");
         } catch (error) {
           return failure(error);
         }
@@ -280,8 +280,8 @@ const handler = createMcpHandler(
     server.registerTool(
       "list_tickets",
       {
-        title: "Lister les tickets",
-        description: "Liste les tickets actifs (par défaut) ou récents, avec leur statut et le lien de PR.",
+        title: "List tickets",
+        description: "Lists active (default) or recent tickets, with their status and PR link.",
         inputSchema: z.object({
           scope: z.enum(["active", "recent"]).default("active"),
         }),
@@ -292,7 +292,7 @@ const handler = createMcpHandler(
             statuses: scope === "active" ? ACTIVE_STATUSES : undefined,
             limit: 20,
           });
-          if (!tickets.length) return text(scope === "active" ? "Aucun ticket actif." : "Aucun ticket.");
+          if (!tickets.length) return text(scope === "active" ? "No active tickets." : "No tickets.");
           return text(tickets.map(ticketLine).join("\n"));
         } catch (error) {
           return failure(error);
@@ -303,36 +303,36 @@ const handler = createMcpHandler(
     server.registerTool(
       "get_ticket",
       {
-        title: "Détail d'un ticket",
-        description: "Statut, résumé, PR, erreur, questions et derniers événements d'un ticket.",
+        title: "Ticket details",
+        description: "Status, summary, PR, error, questions and latest events of a ticket.",
         inputSchema: z.object({ number: z.number().int().positive() }),
       },
       async ({ number }) => {
         try {
           const db = adminDb();
           const ticket = await getTicketByNumber(db, number);
-          if (!ticket) return failure(new Error(`Ticket #${number} introuvable`));
+          if (!ticket) return failure(new Error(`Ticket #${number} not found`));
           const [events, questions, relations] = await Promise.all([
             listEvents(db, ticket.id, { limit: 15 }),
             listQuestions(db, ticket.id),
             getTicketRelations(db, ticket),
           ]);
-          const parts = [ticketLine(ticket), `Demande : ${ticket.description}`];
-          const settings = [ticket.model && `modèle ${ticket.model}`, ticket.effort && `effort ${ticket.effort}`];
+          const parts = [ticketLine(ticket), `Request: ${ticket.description}`];
+          const settings = [ticket.model && `model ${ticket.model}`, ticket.effort && `effort ${ticket.effort}`];
           if (settings.some(Boolean)) parts.push(settings.filter(Boolean).join(", "));
           const ref = (r: { number: number; title: string; status: keyof typeof STATUS_LABELS }) =>
             `#${r.number} [${STATUS_LABELS[r.status]}] ${r.title}`;
-          if (relations.parent) parts.push(`Parent : ${ref(relations.parent)}`);
-          if (relations.blockers.length) parts.push(`Dépend de : ${relations.blockers.map(ref).join(" ; ")}`);
-          if (relations.children.length) parts.push(`Sous-tickets : ${relations.children.map(ref).join(" ; ")}`);
-          if (ticket.summary) parts.push(`Résumé :\n${ticket.summary}`);
-          if (ticket.error) parts.push(`Erreur : ${ticket.error}`);
+          if (relations.parent) parts.push(`Parent: ${ref(relations.parent)}`);
+          if (relations.blockers.length) parts.push(`Depends on: ${relations.blockers.map(ref).join(" ; ")}`);
+          if (relations.children.length) parts.push(`Sub-tickets: ${relations.children.map(ref).join(" ; ")}`);
+          if (ticket.summary) parts.push(`Summary:\n${ticket.summary}`);
+          if (ticket.error) parts.push(`Error: ${ticket.error}`);
           if (questions.length) {
             parts.push(
-              `Questions :\n${questions.map((q) => `- ${q.question} → ${q.answer ?? "(en attente)"}`).join("\n")}`,
+              `Questions:\n${questions.map((q) => `- ${q.question} → ${q.answer ?? "(pending)"}`).join("\n")}`,
             );
           }
-          parts.push(`Derniers événements :\n${events.map((e) => `- [${e.kind}] ${e.message.slice(0, 300)}`).join("\n")}`);
+          parts.push(`Latest events:\n${events.map((e) => `- [${e.kind}] ${e.message.slice(0, 300)}`).join("\n")}`);
           return text(parts.join("\n\n"));
         } catch (error) {
           return failure(error);
@@ -343,17 +343,17 @@ const handler = createMcpHandler(
     server.registerTool(
       "cancel_ticket",
       {
-        title: "Annuler un ticket",
-        description: "Annule un ticket actif. L'agent en cours est arrêté.",
+        title: "Cancel a ticket",
+        description: "Cancels an active ticket. The running agent is stopped.",
         inputSchema: z.object({ number: z.number().int().positive() }),
       },
       async ({ number }) => {
         try {
           const db = adminDb();
           const ticket = await getTicketByNumber(db, number);
-          if (!ticket) return failure(new Error(`Ticket #${number} introuvable`));
+          if (!ticket) return failure(new Error(`Ticket #${number} not found`));
           await cancelTicket(db, ticket.id);
-          return text(`Ticket #${number} annulé.`);
+          return text(`Ticket #${number} cancelled.`);
         } catch (error) {
           return failure(error);
         }
@@ -363,9 +363,9 @@ const handler = createMcpHandler(
     server.registerTool(
       "set_priority",
       {
-        title: "Changer la priorité",
+        title: "Change priority",
         description:
-          "Change la priorité d'un ticket encore actif : 1 = urgent (passe en premier dans la file), 2, 3 = défaut. Ne coupe pas un ticket déjà en cours.",
+          "Changes the priority of a still-active ticket: 1 = urgent (goes first in the queue), 2, 3 = default. Does not interrupt a ticket already running.",
         inputSchema: z.object({
           number: z.number().int().positive(),
           priority: z.number().int().min(1).max(3),
@@ -375,9 +375,9 @@ const handler = createMcpHandler(
         try {
           const db = adminDb();
           const ticket = await getTicketByNumber(db, number);
-          if (!ticket) return failure(new Error(`Ticket #${number} introuvable`));
+          if (!ticket) return failure(new Error(`Ticket #${number} not found`));
           await setPriority(db, ticket.id, priority);
-          return text(`Ticket #${number} en priorité ${priority}.`);
+          return text(`Ticket #${number} set to priority ${priority}.`);
         } catch (error) {
           return failure(error);
         }
@@ -387,18 +387,18 @@ const handler = createMcpHandler(
     server.registerTool(
       "merge_ticket",
       {
-        title: "Merger en prod",
+        title: "Merge to prod",
         description:
-          "Merge la PR d'un ticket livré dans main : il part en production. Uniquement sur demande explicite de l'utilisateur, après confirmation.",
+          "Merges the PR of a delivered ticket into main: it goes to production. Only on the user's explicit request, after confirmation.",
         inputSchema: z.object({ number: z.number().int().positive() }),
       },
       async ({ number }) => {
         try {
           const db = adminDb();
           const ticket = await getTicketByNumber(db, number);
-          if (!ticket) return failure(new Error(`Ticket #${number} introuvable`));
+          if (!ticket) return failure(new Error(`Ticket #${number} not found`));
           await requestMerge(db, ticket.id);
-          return text(`Merge du ticket #${number} demandé. Le worker le fait dans la minute, puis Vercel déploie en prod.`);
+          return text(`Merge of ticket #${number} requested. The worker does it within a minute, then Vercel deploys to prod.`);
         } catch (error) {
           return failure(error);
         }
@@ -408,17 +408,17 @@ const handler = createMcpHandler(
     server.registerTool(
       "retry_ticket",
       {
-        title: "Relancer un ticket",
-        description: "Remet en file un ticket en échec ou annulé.",
+        title: "Retry a ticket",
+        description: "Puts a failed or cancelled ticket back in the queue.",
         inputSchema: z.object({ number: z.number().int().positive() }),
       },
       async ({ number }) => {
         try {
           const db = adminDb();
           const ticket = await getTicketByNumber(db, number);
-          if (!ticket) return failure(new Error(`Ticket #${number} introuvable`));
+          if (!ticket) return failure(new Error(`Ticket #${number} not found`));
           await retryTicket(db, ticket.id);
-          return text(`Ticket #${number} remis en file.`);
+          return text(`Ticket #${number} re-queued.`);
         } catch (error) {
           return failure(error);
         }

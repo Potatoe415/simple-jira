@@ -16,7 +16,7 @@ export function CommentForm({ ticketId, number, active }: { ticketId: string; nu
       <input type="hidden" name="ticket_id" value={ticketId} />
       <input type="hidden" name="number" value={number} />
       <label className="label" htmlFor="comment-body">
-        Parler à l&apos;agent
+        Talk to the agent
       </label>
       <textarea
         id="comment-body"
@@ -27,15 +27,15 @@ export function CommentForm({ ticketId, number, active }: { ticketId: string; nu
         className="input"
         placeholder={
           active
-            ? "Une précision, une correction de cap… L'agent la lit avant sa prochaine passe."
-            : "Une note sur ce ticket. Relance-le pour que l'agent la prenne en compte."
+            ? "A clarification, a course correction… The agent reads it before its next pass."
+            : "A note on this ticket. Retry it so the agent takes it into account."
         }
       />
       <div className="flex items-center gap-3">
         <button className="btn" disabled={pending}>
-          {pending ? "Envoi…" : "Envoyer"}
+          {pending ? "Sending…" : "Send"}
         </button>
-        {state.ok && <span className="text-sm text-emerald-400">Envoyé</span>}
+        {state.ok && <span className="text-sm text-emerald-400">Sent</span>}
         {state.error && <span className="whitespace-pre-wrap text-sm text-red-400">{state.error}</span>}
       </div>
     </form>

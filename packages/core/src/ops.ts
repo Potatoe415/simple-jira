@@ -48,7 +48,7 @@ function isKindCheck(error: DbError): boolean {
 }
 
 export const MIGRATION_HINT =
-  "Applique la migration supabase/migrations/20261105090000_agent_visibility.sql dans l'éditeur SQL Supabase.";
+  "Apply the migration supabase/migrations/20261105090000_agent_visibility.sql in the Supabase SQL editor.";
 
 function without(values: Record<string, unknown>, keys: readonly string[]): Record<string, unknown> {
   return Object.fromEntries(Object.entries(values).filter(([key]) => !keys.includes(key)));
@@ -136,11 +136,11 @@ export async function addEvent(
 
 export async function addOwnerComment(db: Db, ticketId: string, body: string): Promise<void> {
   const text = body.trim();
-  if (!text) throw new Error("Commentaire vide");
-  if (text.length > 4000) throw new Error("Commentaire trop long (4000 caractères max)");
+  if (!text) throw new Error("Empty comment");
+  if (text.length > 4000) throw new Error("Comment too long (4000 characters max)");
   const { error } = await db.from("ticket_events").insert({ ticket_id: ticketId, kind: "owner_comment", message: text });
   // The worker could not read it back: say so rather than store it under another kind.
-  if (isMissingSchema(error) || isKindCheck(error)) throw new Error(`Commentaires indisponibles. ${MIGRATION_HINT}`);
+  if (isMissingSchema(error) || isKindCheck(error)) throw new Error(`Comments unavailable. ${MIGRATION_HINT}`);
   if (error) fail("addOwnerComment", error);
 }
 
@@ -218,14 +218,14 @@ export async function setProjectMemory(
 
 export async function deleteProjectMemory(db: Db, projectId: string, id: string): Promise<void> {
   const { error } = await db.from("project_memory").delete().eq("id", id).eq("project_id", projectId);
-  if (isMissingSchema(error)) throw new Error(`Mémoire indisponible. ${MIGRATION_HINT}`);
+  if (isMissingSchema(error)) throw new Error(`Memory unavailable. ${MIGRATION_HINT}`);
   if (error) fail("deleteProjectMemory", error);
 }
 
 async function resolveTicketId(db: Db, ref: string | number): Promise<string> {
   if (typeof ref === "string") return ref;
   const ticket = await getTicketByNumber(db, ref);
-  if (!ticket) throw new Error(`Ticket #${ref} introuvable`);
+  if (!ticket) throw new Error(`Ticket #${ref} not found`);
   return ticket.id;
 }
 
@@ -235,10 +235,10 @@ export async function createTicket(db: Db, input: CreateTicketInput): Promise<Ti
 
   if (values.type === "new_project") {
     const existing = await getProjectBySlug(db, values.new_project!.slug);
-    if (existing) throw new Error(`Le projet "${values.new_project!.slug}" existe déjà`);
+    if (existing) throw new Error(`Project "${values.new_project!.slug}" already exists`);
   } else {
     const project = await getProjectBySlug(db, values.project_slug!);
-    if (!project) throw new Error(`Projet inconnu : "${values.project_slug}"`);
+    if (!project) throw new Error(`Unknown project: "${values.project_slug}"`);
     projectId = project.id;
   }
 
@@ -271,8 +271,8 @@ export async function createTicket(db: Db, input: CreateTicketInput): Promise<Ti
   if (error) fail("createTicket", error);
 
   const ticket = data as Ticket;
-  await addEvent(db, ticket.id, "status", `Ticket créé (${values.source})`);
-  if (dropped.length) await addEvent(db, ticket.id, "info", `Champs ignorés (${dropped.join(", ")}). ${MIGRATION_HINT}`);
+  await addEvent(db, ticket.id, "status", `Ticket created (${values.source})`);
+  if (dropped.length) await addEvent(db, ticket.id, "info", `Fields ignored (${dropped.join(", ")}). ${MIGRATION_HINT}`);
   return ticket;
 }
 
@@ -456,8 +456,8 @@ export async function cancelTicket(db: Db, ticketId: string): Promise<void> {
     .in("status", [...ACTIVE_STATUSES])
     .select("id");
   if (error) fail("cancelTicket", error);
-  if (!data.length) throw new Error("Ce ticket n'est plus actif");
-  await addEvent(db, ticketId, "status", "Ticket annulé");
+  if (!data.length) throw new Error("This ticket is no longer active");
+  await addEvent(db, ticketId, "status", "Ticket cancelled");
 }
 
 export async function retryTicket(db: Db, ticketId: string): Promise<void> {
@@ -468,8 +468,8 @@ export async function retryTicket(db: Db, ticketId: string): Promise<void> {
     .in("status", ["failed", "cancelled"])
     .select("id");
   if (error) fail("retryTicket", error);
-  if (!data.length) throw new Error("Seul un ticket en échec ou annulé peut être relancé");
-  await addEvent(db, ticketId, "status", "Relance demandée");
+  if (!data.length) throw new Error("Only a failed or cancelled ticket can be retried");
+  await addEvent(db, ticketId, "status", "Retry requested");
 }
 
 export async function setPriority(db: Db, ticketId: string, priority: number): Promise<void> {
@@ -481,8 +481,8 @@ export async function setPriority(db: Db, ticketId: string, priority: number): P
     .in("status", [...ACTIVE_STATUSES])
     .select("id");
   if (error) fail("setPriority", error);
-  if (!data.length) throw new Error("La priorité ne change que pour un ticket encore actif");
-  await addEvent(db, ticketId, "status", `Priorité ${value}`);
+  if (!data.length) throw new Error("Priority can only change on a ticket that is still active");
+  await addEvent(db, ticketId, "status", `Priority ${value}`);
 }
 
 export async function requestMerge(db: Db, ticketId: string): Promise<void> {
@@ -494,8 +494,8 @@ export async function requestMerge(db: Db, ticketId: string): Promise<void> {
     .is("merged_at", null)
     .select("id");
   if (error) fail("requestMerge", error);
-  if (!data.length) throw new Error("Seul un ticket avec une PR prête peut être mergé");
-  await addEvent(db, ticketId, "status", "Merge en prod demandé");
+  if (!data.length) throw new Error("Only a ticket with a ready PR can be merged");
+  await addEvent(db, ticketId, "status", "Merge to prod requested");
 }
 
 export async function getWorkerStatus(db: Db): Promise<WorkerStatus | null> {

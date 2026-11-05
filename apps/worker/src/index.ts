@@ -25,11 +25,11 @@ async function heartbeat() {
 
 async function preflight() {
   try {
-    console.log(`GitHub : connecté en tant que ${await gh(["api", "user", "--jq", ".login"], process.cwd())}`);
+    console.log(`GitHub: signed in as ${await gh(["api", "user", "--jq", ".login"], process.cwd())}`);
   } catch (error) {
-    console.warn(`⚠ GitHub inaccessible (git credential manager ou gh auth login) : ${(error as Error).message}`);
+    console.warn(`⚠ GitHub unreachable (git credential manager or gh auth login): ${(error as Error).message}`);
   }
-  if (!existsSync(config.runnerScript)) console.warn(`⚠ Runner introuvable : ${config.runnerScript}`);
+  if (!existsSync(config.runnerScript)) console.warn(`⚠ Runner not found: ${config.runnerScript}`);
   for (const [command, args] of [
     ["git", ["--version"]],
     [config.runnerEngine, ["--version"]],
@@ -38,7 +38,7 @@ async function preflight() {
       (error: Error) => ({ code: -1, output: error.message }),
     );
     if (result.code !== 0) {
-      console.warn(`⚠ ${command} ${args.join(" ")} a échoué :\n${result.output.trim()}`);
+      console.warn(`⚠ ${command} ${args.join(" ")} failed:\n${result.output.trim()}`);
     }
   }
 }
@@ -51,8 +51,8 @@ async function requeueInterrupted() {
     .select("id, number");
   if (error) throw new Error(`requeue: ${error.message}`);
   for (const ticket of data) {
-    console.log(`[#${ticket.number}] remis en file après redémarrage`);
-    await addEvent(db, ticket.id, "status", "Worker redémarré : ticket remis en file");
+    console.log(`[#${ticket.number}] re-queued after restart`);
+    await addEvent(db, ticket.id, "status", "Worker restarted: ticket re-queued");
   }
 }
 
@@ -64,7 +64,7 @@ async function claim(): Promise<Ticket | null> {
 
 async function main() {
   console.log(
-    `simple-jira worker "${config.workerId}" : file vérifiée toutes les ${config.pollIntervalMs / 1000}s, runner ${config.runnerScript}`,
+    `simple-jira worker "${config.workerId}": queue checked every ${config.pollIntervalMs / 1000}s, runner ${config.runnerScript}`,
   );
   await preflight();
   await requeueInterrupted();
@@ -76,18 +76,18 @@ async function main() {
   const shutdown = () => {
     if (stopping) process.exit(1);
     stopping = true;
-    console.log("Arrêt demandé : fin après la tâche en cours (Ctrl+C encore pour forcer).");
+    console.log("Stop requested: finishing after the current task (Ctrl+C again to force).");
     if (!currentTicketId) process.exit(0);
   };
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 
   const deadline = config.runForMs ? Date.now() + config.runForMs : null;
-  if (deadline) console.log(`Arrêt automatique prévu à ${new Date(deadline).toLocaleString("fr-FR")}`);
+  if (deadline) console.log(`Automatic stop scheduled at ${new Date(deadline).toLocaleString("en-GB")}`);
 
   while (!stopping) {
     if (deadline && Date.now() >= deadline) {
-      console.log("Durée écoulée : arrêt du worker.");
+      console.log("Time is up: stopping the worker.");
       break;
     }
     let ticket: Ticket | null = null;
@@ -103,7 +103,7 @@ async function main() {
 
     currentTicketId = ticket.id;
     await heartbeat();
-    await addEvent(db, ticket.id, "status", `Pris en charge par ${config.workerId}`).catch(() => undefined);
+    await addEvent(db, ticket.id, "status", `Picked up by ${config.workerId}`).catch(() => undefined);
     await processTicket(ticket);
     currentTicketId = null;
     await heartbeat();

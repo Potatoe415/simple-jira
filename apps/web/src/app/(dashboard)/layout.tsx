@@ -22,7 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     {
       title: "Tickets",
       links: [
-        { href: "/", label: "Tableau de bord" },
+        { href: "/", label: "Dashboard" },
         ...(Object.entries(VIEWS) as [View, (typeof VIEWS)[View]][]).map(([view, { label, statuses }]) => ({
           href: filtersHref({ view }),
           label,
@@ -32,23 +32,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
       ],
     },
     {
-      title: "Priorité (actifs)",
+      title: "Priority (active)",
       links: [1, 2, 3].map((priority) => ({
         href: filtersHref({ priority: String(priority), status: ACTIVE_STATUSES.join(",") }),
-        label: priority === 1 ? "P1 : urgent" : priority === 2 ? "P2" : "P3 : normal",
+        label: priority === 1 ? "P1: urgent" : priority === 2 ? "P2" : "P3: normal",
         count: counts.activeByPriority[priority as 1 | 2 | 3] ?? 0,
         tone: priority === 1 ? ("red" as const) : undefined,
       })),
     },
     {
-      title: "Projets",
+      title: "Projects",
       links: [
         ...projects.map((project) => ({
           href: filtersHref({ project: project.slug }),
           label: project.name,
           count: counts.byProject[project.id] ?? 0,
         })),
-        { href: "/projects", label: "Gérer les projets →" },
+        { href: "/projects", label: "Manage projects →" },
       ],
     },
   ];
@@ -60,8 +60,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
           sections={sections}
           worker={{
             online,
-            label: online ? "Worker en ligne" : "Worker hors ligne",
-            title: worker ? `${worker.hostname}, vu ${timeAgo(worker.last_seen_at)}` : "jamais vu",
+            label: online ? "Worker online" : "Worker offline",
+            title: worker ? `${worker.hostname}, seen ${timeAgo(worker.last_seen_at)}` : "never seen",
           }}
         />
       </Suspense>

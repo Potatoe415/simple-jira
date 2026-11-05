@@ -114,7 +114,7 @@ export function createStreamParser(options: { worktree: string; verifyCommands: 
       const call = pending.get(block.tool_use_id);
       pending.delete(block.tool_use_id);
       if (!call || !call.command || !isCheck(call.command)) {
-        if (block.is_error && call) log.event("tool", `✗ ${call.name} : ${oneLine(resultText(block.content), 300)}`);
+        if (block.is_error && call) log.event("tool", `✗ ${call.name}: ${oneLine(resultText(block.content), 300)}`);
         continue;
       }
       const output = resultText(block.content);
@@ -139,7 +139,7 @@ export function createStreamParser(options: { worktree: string; verifyCommands: 
       }
       const blocks = Array.isArray(parsed.message?.content) ? parsed.message.content : [];
       if (parsed.type === "system" && parsed.subtype === "init") {
-        log.info(`Session Claude Code démarrée${parsed.model ? ` (${parsed.model})` : ""}`);
+        log.info(`Claude Code session started${parsed.model ? ` (${parsed.model})` : ""}`);
       } else if (parsed.type === "assistant") {
         onAssistant(blocks);
       } else if (parsed.type === "user") {
@@ -149,11 +149,11 @@ export function createStreamParser(options: { worktree: string; verifyCommands: 
         summary.lastResult = parsed.result ?? null;
         summary.isError = !!parsed.is_error;
         const seconds = parsed.duration_ms ? Math.round(parsed.duration_ms / 1000) : null;
-        const stats = [parsed.num_turns && `${parsed.num_turns} tours`, seconds && `${seconds}s`]
+        const stats = [parsed.num_turns && `${parsed.num_turns} turns`, seconds && `${seconds}s`]
           .filter(Boolean)
           .join(", ");
-        if (parsed.is_error) log.error(`Claude Code : ${oneLine(parsed.result ?? parsed.subtype ?? "erreur", 1500)}`);
-        else log.info(`Passe terminée${stats ? ` (${stats})` : ""}`);
+        if (parsed.is_error) log.error(`Claude Code: ${oneLine(parsed.result ?? parsed.subtype ?? "error", 1500)}`);
+        else log.info(`Pass finished${stats ? ` (${stats})` : ""}`);
       }
     },
   };

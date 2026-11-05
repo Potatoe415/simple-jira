@@ -102,8 +102,8 @@ export async function browserCheck(
   const result: BrowserResult = { ok: false, previewUrl, screens: [], consoleErrors: [], failedRequests: [] };
   const chromium = await loadChromium();
   if (!chromium) {
-    result.skipped = "playwright-core n'est pas installé dans apps/worker (pnpm install)";
-    log.event("browser", `Test navigateur non lancé : ${result.skipped}`, { ...result });
+    result.skipped = "playwright-core is not installed in apps/worker (pnpm install)";
+    log.event("browser", `Browser test not run: ${result.skipped}`, { ...result });
     return result;
   }
 
@@ -142,7 +142,7 @@ export async function browserCheck(
     const badStatus = result.screens.some((screen) => screen.status !== null && screen.status >= 400);
     result.ok = !badStatus && result.consoleErrors.length === 0;
   } catch (error) {
-    result.skipped = `navigateur indisponible : ${(error as Error).message.split("\n")[0]}`;
+    result.skipped = `browser unavailable: ${(error as Error).message.split("\n")[0]}`;
   } finally {
     await browser?.close().catch(() => undefined);
   }
@@ -154,16 +154,16 @@ export async function browserCheck(
 }
 
 export function browserSummary(result: BrowserResult): string {
-  if (result.skipped && !result.screens.length) return `Test navigateur non concluant : ${result.skipped}`;
+  if (result.skipped && !result.screens.length) return `Browser test inconclusive: ${result.skipped}`;
   const pages = result.screens.map((screen) => `${screen.path} (${screen.status ?? "?"})`).join(", ");
   const lines = [
-    `${result.ok ? "✓" : "⚠"} Test navigateur sur la preview : ${pages}`,
-    `${result.consoleErrors.length} erreur(s) console, ${result.failedRequests.length} requête(s) en échec`,
+    `${result.ok ? "✓" : "⚠"} Browser test on the preview: ${pages}`,
+    `${result.consoleErrors.length} console error(s), ${result.failedRequests.length} failed request(s)`,
     ...result.consoleErrors.slice(0, 5).map((line) => `console: ${line}`),
-    ...result.failedRequests.slice(0, 5).map((line) => `réseau: ${line}`),
+    ...result.failedRequests.slice(0, 5).map((line) => `network: ${line}`),
   ];
   if (result.screens.some((screen) => !screen.storage)) {
-    lines.push(`Captures locales : ${result.screens.map((screen) => screen.local).join(", ")}`);
+    lines.push(`Local screenshots: ${result.screens.map((screen) => screen.local).join(", ")}`);
   }
   return lines.join("\n");
 }

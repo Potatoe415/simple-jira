@@ -64,8 +64,8 @@ export function SidePanel({
           type="button"
           onClick={toggleCollapsed}
           className="ml-auto hidden rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 lg:block"
-          title="Replier le panneau"
-          aria-label="Replier le panneau"
+          title="Collapse panel"
+          aria-label="Collapse panel"
         >
           «
         </button>
@@ -73,7 +73,7 @@ export function SidePanel({
           type="button"
           onClick={() => setOpen(false)}
           className="ml-auto rounded p-1 text-zinc-400 hover:bg-zinc-800 lg:hidden"
-          aria-label="Fermer le menu"
+          aria-label="Close menu"
         >
           ✕
         </button>
@@ -128,7 +128,7 @@ export function SidePanel({
         type="button"
         onClick={() => setOpen(true)}
         className="fixed left-3 top-3 z-30 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-sm lg:hidden"
-        aria-label="Ouvrir le menu"
+        aria-label="Open menu"
       >
         ☰
       </button>
@@ -137,8 +137,8 @@ export function SidePanel({
           type="button"
           onClick={toggleCollapsed}
           className="fixed left-2 top-3 z-30 hidden rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-400 hover:text-zinc-100 lg:block"
-          title="Déplier le panneau"
-          aria-label="Déplier le panneau"
+          title="Expand panel"
+          aria-label="Expand panel"
         >
           »
         </button>

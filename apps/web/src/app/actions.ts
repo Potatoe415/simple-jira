@@ -168,7 +168,7 @@ export async function saveMemoryAction(_: ActionState, form: FormData): Promise<
     const saved = await setProjectMemory(adminDb(), field(form, "project_id"), [
       { key: field(form, "key"), body: field(form, "body") },
     ]);
-    if (!saved) return { error: `Mémoire indisponible. ${MIGRATION_HINT}` };
+    if (!saved) return { error: `Memory unavailable. ${MIGRATION_HINT}` };
   } catch (error) {
     return { error: errorMessage(error) };
   }

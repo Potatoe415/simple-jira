@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "simple-jira",
-  description: "Centre de contrôle des agents de développement",
+  description: "Control center for development agents",
 };
 
 export const viewport: Viewport = {
@@ -14,7 +14,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="en">
       <body className="min-h-screen font-sans">{children}</body>
     </html>
   );

@@ -5,10 +5,10 @@ import { redact } from "./redact";
 export type NotifyEvent = "pr_ready" | "question" | "failed" | "merged";
 
 const TITLES: Record<NotifyEvent, string> = {
-  pr_ready: "PR prête",
-  question: "Question en attente",
-  failed: "Échec",
-  merged: "En prod",
+  pr_ready: "PR ready",
+  question: "Question pending",
+  failed: "Failed",
+  merged: "In prod",
 };
 
 const TAGS: Record<NotifyEvent, string> = {
@@ -29,8 +29,8 @@ export async function notify(
   if (!url) return;
   const link = config.dashboardUrl ? `${config.dashboardUrl}/tickets/${ticket.number}` : "";
   const body = redact([`#${ticket.number} ${ticket.title}`, detail?.slice(0, 300), link].filter(Boolean).join("\n"));
-  // HTTP headers must stay ASCII: accents are stripped from the title.
-  const title = `simple-jira : ${TITLES[event]} #${ticket.number}`.normalize("NFD").replace(/[^\x20-\x7e]/g, "");
+  // HTTP headers must stay ASCII: non-ASCII characters are stripped from the title.
+  const title = `simple-jira: ${TITLES[event]} #${ticket.number}`.normalize("NFD").replace(/[^\x20-\x7e]/g, "");
   try {
     const response = await fetch(url, {
       method: "POST",

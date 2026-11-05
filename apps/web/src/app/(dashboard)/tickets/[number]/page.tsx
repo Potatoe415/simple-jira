@@ -95,20 +95,20 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
         {isActive && (
           <form action={cancelTicketAction}>
             <input type="hidden" name="ticket_id" value={ticket.id} />
-            <button className="btn-ghost">Annuler</button>
+            <button className="btn-ghost">Cancel</button>
           </form>
         )}
         {canRetry && (
           <form action={retryTicketAction}>
             <input type="hidden" name="ticket_id" value={ticket.id} />
-            <button className="btn">Relancer</button>
+            <button className="btn">Retry</button>
           </form>
         )}
       </div>
 
       <dl className="mb-6 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
         <div>
-          <dt className="label">Projet</dt>
+          <dt className="label">Project</dt>
           <dd>{ticket.project?.name ?? ticket.new_project?.name ?? "?"}</dd>
         </div>
         <div>
@@ -116,23 +116,23 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
           <dd>{TYPE_LABELS[ticket.type]}</dd>
         </div>
         <div>
-          <dt className="label">Créé</dt>
+          <dt className="label">Created</dt>
           <dd>{timeAgo(ticket.created_at)}</dd>
         </div>
         <div>
-          <dt className="label">Livraison</dt>
-          <dd>{ticket.auto_merge ? "Direct en prod" : "PR à valider"}</dd>
+          <dt className="label">Delivery</dt>
+          <dd>{ticket.auto_merge ? "Straight to prod" : "PR to review"}</dd>
         </div>
         <div>
-          <dt className="label">Priorité</dt>
+          <dt className="label">Priority</dt>
           <dd>
             {isActive ? (
               <form action={setPriorityAction} className="flex items-center gap-2">
                 <input type="hidden" name="ticket_id" value={ticket.id} />
                 <select name="priority" defaultValue={String(ticket.priority)} className="input w-auto py-1">
-                  <option value="1">1 : urgent</option>
+                  <option value="1">1: urgent</option>
                   <option value="2">2</option>
-                  <option value="3">3 : normal</option>
+                  <option value="3">3: normal</option>
                 </select>
                 <button className="btn-ghost py-1 text-xs">OK</button>
               </form>
@@ -143,19 +143,19 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
         </div>
         {(ticket.model || ticket.effort) && (
           <div>
-            <dt className="label">Modèle</dt>
+            <dt className="label">Model</dt>
             <dd>{[ticket.model, ticket.effort && `effort ${ticket.effort}`].filter(Boolean).join(", ")}</dd>
           </div>
         )}
         {Number(ticket.cost_usd) > 0 && (
           <div>
-            <dt className="label">Coût</dt>
-            <dd>{Number(ticket.cost_usd).toFixed(2)} $</dd>
+            <dt className="label">Cost</dt>
+            <dd>${Number(ticket.cost_usd).toFixed(2)}</dd>
           </div>
         )}
         {ticket.branch && (
           <div className="col-span-2">
-            <dt className="label">Branche</dt>
+            <dt className="label">Branch</dt>
             <dd className="truncate font-mono text-xs">{ticket.branch}</dd>
           </div>
         )}
@@ -177,16 +177,16 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
         <section className="card mb-4 space-y-3 text-sm">
           {relations.parent && (
             <div>
-              <h2 className="label">Ticket parent</h2>
+              <h2 className="label">Parent ticket</h2>
               <RefLink ticket={relations.parent} />
             </div>
           )}
           {relations.blockers.length > 0 && (
             <div>
               <h2 className="label">
-                Dépend de{" "}
+                Depends on{" "}
                 {waiting.length > 0 && ticket.status === "queued" && (
-                  <span className="normal-case text-amber-300">: en attente de {waiting.length} ticket(s)</span>
+                  <span className="normal-case text-amber-300">: waiting on {waiting.length} ticket(s)</span>
                 )}
               </h2>
               <ul className="space-y-1">
@@ -200,7 +200,7 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
           )}
           {relations.children.length > 0 && (
             <div>
-              <h2 className="label">Sous-tickets</h2>
+              <h2 className="label">Sub-tickets</h2>
               <ul className="space-y-1">
                 {relations.children.map((child) => (
                   <li key={child.id}>
@@ -214,17 +214,17 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
       )}
 
       <section className="card mb-4">
-        <h2 className="label">Demande</h2>
+        <h2 className="label">Request</h2>
         <p className="whitespace-pre-wrap text-sm">{ticket.description}</p>
         {ticket.goal && (
           <>
-            <h2 className="label mt-4">Objectif</h2>
+            <h2 className="label mt-4">Goal</h2>
             <p className="text-sm">{ticket.goal}</p>
           </>
         )}
         {ticket.steps.length > 0 && (
           <>
-            <h2 className="label mt-4">Étapes</h2>
+            <h2 className="label mt-4">Steps</h2>
             <ol className="list-decimal space-y-1 pl-5 text-sm">
               {ticket.steps.map((step, index) => (
                 <li key={index}>{step}</li>
@@ -233,20 +233,20 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
           </>
         )}
         {ticket.worktree_path && (
-          <p className="mt-4 font-mono text-xs text-zinc-500">Worktree : {ticket.worktree_path}</p>
+          <p className="mt-4 font-mono text-xs text-zinc-500">Worktree: {ticket.worktree_path}</p>
         )}
       </section>
 
       {ticket.error && (
         <section className="card mb-4 border-red-900/70">
-          <h2 className="label text-red-400">Erreur</h2>
+          <h2 className="label text-red-400">Error</h2>
           <pre className="whitespace-pre-wrap font-mono text-xs text-red-300">{ticket.error}</pre>
         </section>
       )}
 
       {ticket.summary && (
         <section className="card mb-4 border-emerald-900/60">
-          <h2 className="label">Résumé de l&apos;agent</h2>
+          <h2 className="label">Agent summary</h2>
           <p className="whitespace-pre-wrap text-sm">{ticket.summary}</p>
         </section>
       )}
@@ -272,7 +272,7 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
       {browser && (
         <section className={`card mb-4 ${browser.ok ? "border-cyan-900/60" : "border-amber-900/60"}`}>
           <h2 className="label">
-            Test navigateur {browser.ok ? "✓" : "⚠"}{" "}
+            Browser test {browser.ok ? "✓" : "⚠"}{" "}
             <span className="normal-case text-zinc-500">{timeAgo(browser.at)}</span>
           </h2>
           <ul className="grid gap-3 sm:grid-cols-2">
@@ -284,10 +284,10 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
                 {screen.url ? (
                   <a href={screen.url} target="_blank" rel="noreferrer">
                     {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL */}
-                    <img src={screen.url} alt={`Capture de ${screen.path}`} className="rounded border border-zinc-800" />
+                    <img src={screen.url} alt={`Screenshot of ${screen.path}`} className="rounded border border-zinc-800" />
                   </a>
                 ) : (
-                  <span className="font-mono text-zinc-500">Capture locale : {screen.local}</span>
+                  <span className="font-mono text-zinc-500">Local screenshot: {screen.local}</span>
                 )}
               </li>
             ))}

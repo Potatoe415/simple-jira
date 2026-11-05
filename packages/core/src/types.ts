@@ -155,18 +155,18 @@ export type OpenQuestion = Question & {
 };
 
 export const STATUS_LABELS: Record<TicketStatus, string> = {
-  queued: "En file",
-  running: "En cours",
-  blocked: "Bloqué",
-  verifying: "Vérification",
-  delivered: "PR prête",
-  merged: "En prod",
-  failed: "Échec",
-  cancelled: "Annulé",
+  queued: "Queued",
+  running: "Running",
+  blocked: "Blocked",
+  verifying: "Verifying",
+  delivered: "PR ready",
+  merged: "In prod",
+  failed: "Failed",
+  cancelled: "Cancelled",
 };
 
 export const TYPE_LABELS: Record<TicketType, string> = {
-  fix: "Correctif",
-  feature: "Fonctionnalité",
-  new_project: "Nouveau projet",
+  fix: "Fix",
+  feature: "Feature",
+  new_project: "New project",
 };

@@ -6,19 +6,19 @@ import { useEffect, useRef, useState } from "react";
 import { clockTime } from "@/lib/format";
 
 const KIND_STYLE: Record<EventKind, { icon: string; label: string; color: string }> = {
-  status: { icon: "●", label: "Statut", color: "text-sky-300" },
+  status: { icon: "●", label: "Status", color: "text-sky-300" },
   agent: { icon: "›", label: "Agent", color: "text-zinc-200" },
   message: { icon: "›", label: "Agent", color: "text-zinc-200" },
   plan: { icon: "☰", label: "Plan", color: "text-zinc-200" },
-  comment: { icon: "✎", label: "Note de l'agent", color: "text-sky-200" },
-  tool: { icon: "⚙", label: "Outil", color: "text-zinc-500" },
-  verify: { icon: "✓", label: "Vérification", color: "text-violet-300" },
-  check: { icon: "✓", label: "Vérification", color: "text-violet-300" },
+  comment: { icon: "✎", label: "Agent note", color: "text-sky-200" },
+  tool: { icon: "⚙", label: "Tool", color: "text-zinc-500" },
+  verify: { icon: "✓", label: "Verification", color: "text-violet-300" },
+  check: { icon: "✓", label: "Verification", color: "text-violet-300" },
   question: { icon: "?", label: "Question", color: "text-amber-300" },
-  owner_comment: { icon: "✉", label: "Toi", color: "text-emerald-300" },
+  owner_comment: { icon: "✉", label: "You", color: "text-emerald-300" },
   pr: { icon: "⇄", label: "PR", color: "text-teal-300" },
-  browser: { icon: "◐", label: "Navigateur", color: "text-cyan-300" },
-  error: { icon: "✗", label: "Erreur", color: "text-red-400" },
+  browser: { icon: "◐", label: "Browser", color: "text-cyan-300" },
+  error: { icon: "✗", label: "Error", color: "text-red-400" },
   info: { icon: "·", label: "Info", color: "text-amber-300/80" },
 };
 
@@ -66,12 +66,12 @@ function Tools({ events }: { events: TicketEvent[] }) {
   return (
     <li className="flex gap-2">
       <span className="w-16 shrink-0 text-zinc-600">{clockTime(last.created_at)}</span>
-      <span className="w-4 shrink-0 text-center text-zinc-500" title="Outils">
+      <span className="w-4 shrink-0 text-center text-zinc-500" title="Tools">
         ⚙
       </span>
       <details className="min-w-0 flex-1 text-zinc-500">
         <summary className="cursor-pointer">
-          {events.length} actions · dernière : {last.message.slice(0, 120)}
+          {events.length} actions · last: {last.message.slice(0, 120)}
         </summary>
         <ol className="mt-1 space-y-0.5 border-l border-zinc-800 pl-3">
           {events.map((event) => (
@@ -136,10 +136,10 @@ export function Timeline({
   return (
     <section className="card">
       <div className="mb-2 flex items-center gap-3">
-        <h2 className="label mb-0">Journal</h2>
+        <h2 className="label mb-0">Log</h2>
         {LIVE.includes(status) && (
           <span className="inline-flex items-center gap-1 text-xs text-sky-300">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-sky-400" /> en direct
+            <span className="h-2 w-2 animate-pulse rounded-full bg-sky-400" /> live
           </span>
         )}
         <label className="ml-auto flex items-center gap-1.5 text-xs text-zinc-400">
@@ -149,11 +149,11 @@ export function Timeline({
             onChange={(event) => setHideTools(event.target.checked)}
             className="accent-sky-500"
           />
-          Masquer les outils
+          Hide tools
         </label>
       </div>
       {shown.length === 0 ? (
-        <p className="text-sm text-zinc-500">Pas encore d&apos;événement.</p>
+        <p className="text-sm text-zinc-500">No events yet.</p>
       ) : (
         <ol className="space-y-1 font-mono text-xs">
           {group(shown).map((item) =>

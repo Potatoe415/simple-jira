@@ -28,7 +28,7 @@ async function planWorktree(ticket: Ticket, project: Project) {
       .code === 0;
     if (!branchExists && !existsSync(path)) return { path, branch };
   }
-  throw new Error(`Branche ou dossier déjà pris pour "${base}" et "${base}-${ticket.number}"`);
+  throw new Error(`Branch or folder already taken for "${base}" and "${base}-${ticket.number}"`);
 }
 
 async function excludeTaskFile(repo: string) {
@@ -50,10 +50,10 @@ export async function createWorktree(
   signal: AbortSignal,
 ): Promise<{ path: string; branch: string }> {
   const repo = project.local_path;
-  if (!existsSync(join(repo, ".git"))) throw new Error(`Dépôt introuvable : ${repo}`);
+  if (!existsSync(join(repo, ".git"))) throw new Error(`Repository not found: ${repo}`);
 
   const { path, branch } = await planWorktree(ticket, project);
-  log.status(`Worktree ${path} sur ${branch} depuis origin/${project.default_branch}`);
+  log.status(`Worktree ${path} on ${branch} from origin/${project.default_branch}`);
   await git(["fetch", "origin", project.default_branch], repo, signal);
   await git(["worktree", "add", "-b", branch, path, `origin/${project.default_branch}`], repo, signal);
   await finishSetup(project, path, log, signal);
@@ -69,12 +69,12 @@ export async function reattachWorktree(
 ): Promise<string> {
   const repo = project.local_path;
   const path = join(dirname(repo), `${basename(repo)}-${branch.split("/").pop()}`);
-  if (existsSync(path)) throw new Error(`Le dossier ${path} existe déjà`);
+  if (existsSync(path)) throw new Error(`Folder ${path} already exists`);
   await git(["fetch", "origin", branch], repo, signal);
   const local = (await run("git", ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`], { cwd: repo })).code === 0;
   await git(local ? ["worktree", "add", path, branch] : ["worktree", "add", "-b", branch, path, `origin/${branch}`], repo, signal);
   if (local) await git(["reset", "--hard", `origin/${branch}`], path, signal);
-  log.status(`Worktree ${path} recréé sur ${branch}`);
+  log.status(`Worktree ${path} recreated on ${branch}`);
   await finishSetup(project, path, log, signal);
   return path;
 }
@@ -86,10 +86,10 @@ async function finishSetup(project: Project, path: string, log: TicketLogger, si
   const modules = join(repo, "node_modules");
   if (existsSync(modules)) {
     symlinkSync(modules, join(path, "node_modules"), "junction");
-    log.status("node_modules relié par jonction");
+    log.status("node_modules linked by junction");
   } else if (project.setup_commands.length) {
     const setup = await runCommands(project.setup_commands, path, log, signal);
-    if (!setup.ok) throw new Error(`Installation en échec :\n${setup.output.slice(-3000)}`);
+    if (!setup.ok) throw new Error(`Setup failed:\n${setup.output.slice(-3000)}`);
   }
 
   for (const file of project.env_files) {
@@ -97,7 +97,7 @@ async function finishSetup(project: Project, path: string, log: TicketLogger, si
     if (!existsSync(source)) continue;
     const ignored = await run("git", ["check-ignore", "-q", file], { cwd: path });
     if (ignored.code !== 0) {
-      log.error(`${file} n'est pas ignoré par git : copie refusée pour ne pas le commiter`);
+      log.error(`${file} is not ignored by git: copy refused so it does not get committed`);
       continue;
     }
     mkdirSync(dirname(join(path, file)), { recursive: true });
@@ -124,11 +124,11 @@ export async function removeWorktree(project: Project, path: string) {
 
   if (isLink(link)) {
     await run("cmd", ["/c", "rmdir", link], { cwd: repo });
-    if (isLink(link)) throw new Error(`Impossible de retirer la jonction ${link}`);
+    if (isLink(link)) throw new Error(`Cannot remove the junction ${link}`);
   } else if (existsSync(link)) {
-    throw new Error(`${link} n'est pas une jonction : suppression refusée, vérifie à la main`);
+    throw new Error(`${link} is not a junction: removal refused, check by hand`);
   }
-  if (hadModules && !existsSync(mainModules)) throw new Error(`${mainModules} a disparu : arrêt immédiat`);
+  if (hadModules && !existsSync(mainModules)) throw new Error(`${mainModules} disappeared: stopping immediately`);
 
   await git(["worktree", "remove", "--force", path], repo);
 }

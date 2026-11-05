@@ -53,7 +53,7 @@ export default async function DashboardPage({
       return inProgress || a.priority - b.priority || a.created_at.localeCompare(b.created_at);
     });
   const projectOptions = projects.map(({ slug, name }) => ({ slug, name }));
-  const title = filters.view ? VIEWS[filters.view].label : "Tickets filtrés";
+  const title = filters.view ? VIEWS[filters.view].label : "Filtered tickets";
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
@@ -69,7 +69,7 @@ export default async function DashboardPage({
             {results.length === FILTERED_LIMIT ? "+" : ""})
           </h2>
           {results.length === 0 ? (
-            <p className="text-sm text-zinc-500">Aucun ticket ne correspond.</p>
+            <p className="text-sm text-zinc-500">No matching tickets.</p>
           ) : (
             <ul className="card py-1">
               {results.map((ticket) => (
@@ -82,10 +82,10 @@ export default async function DashboardPage({
         <>
           <section className="mb-8">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-300">
-              Questions des agents {questions.length > 0 && `(${questions.length})`}
+              Agent questions {questions.length > 0 && `(${questions.length})`}
             </h2>
             {questions.length === 0 ? (
-              <p className="text-sm text-zinc-500">Aucun agent bloqué.</p>
+              <p className="text-sm text-zinc-500">No blocked agents.</p>
             ) : (
               <ul className="space-y-3">
                 {questions.map((question) => (
@@ -106,10 +106,10 @@ export default async function DashboardPage({
 
           <section className="mb-8">
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-400">
-              En cours et en file ({working.length})
+              In progress and queued ({working.length})
             </h2>
             {working.length === 0 ? (
-              <p className="text-sm text-zinc-500">Rien en cours.</p>
+              <p className="text-sm text-zinc-500">Nothing in progress.</p>
             ) : (
               <ul className="card py-1">
                 {working.map((ticket) => (
@@ -122,7 +122,7 @@ export default async function DashboardPage({
           <section className="mb-8">
             <details className="card">
               <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wide text-zinc-400">
-                Nouveau ticket
+                New ticket
               </summary>
               <div className="mt-4">
                 <TicketForm projects={projectOptions} />
@@ -131,9 +131,9 @@ export default async function DashboardPage({
           </section>
 
           <section>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-400">Terminés récemment</h2>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-400">Recently finished</h2>
             {recent.length === 0 ? (
-              <p className="text-sm text-zinc-500">Aucun ticket terminé.</p>
+              <p className="text-sm text-zinc-500">No finished tickets.</p>
             ) : (
               <ul className="card py-1">
                 {recent.map((ticket) => (

@@ -51,7 +51,7 @@ export function createLogger(ticketId: string, ticketNumber: number): TicketLogg
     info: (message) => push("info", message),
     event: (kind, message, meta) => push(kind, message, meta, 2000),
     transition: (status, detail) =>
-      push("status", `→ ${STATUS_LABELS[status]}${detail ? ` : ${detail}` : ""}`, { status }),
+      push("status", `→ ${STATUS_LABELS[status]}${detail ? `: ${detail}` : ""}`, { status }),
     flush: () => {
       send();
       return chain;

@@ -22,7 +22,7 @@ export function PriorityBadge({ priority }: { priority: Priority }) {
   return (
     <span
       className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${PRIORITY_COLORS[priority]}`}
-      title={`Priorité ${priority}`}
+      title={`Priority ${priority}`}
     >
       P{priority}
     </span>

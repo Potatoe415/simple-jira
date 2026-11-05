@@ -42,7 +42,7 @@ class Stop extends Error {}
 
 export async function processTicket(ticket: Ticket): Promise<void> {
   const log = createLogger(ticket.id, ticket.number);
-  log.transition("running", "pris en charge par le worker");
+  log.transition("running", "picked up by the worker");
   const abort = new AbortController();
   const watcher = setInterval(() => {
     getTicket(db, ticket.id)
@@ -56,7 +56,7 @@ export async function processTicket(ticket: Ticket): Promise<void> {
     await execute(ticket, log, abort.signal);
   } catch (error) {
     if (abort.signal.aborted) {
-      log.status("Arrêt : ticket annulé");
+      log.status("Stopped: ticket cancelled");
     } else if (!(error instanceof Stop)) {
       const message = error instanceof Error ? error.message : String(error);
       log.error(message);
@@ -81,7 +81,7 @@ async function forwardComments(ticket: Ticket, task: string, log: TicketLogger):
   if (!comments.length) return 0;
   applyOwnerComments(task, comments);
   await markCommentsRead(db, ticket.id, comments[comments.length - 1]!.id);
-  log.status(`${comments.length} commentaire(s) du propriétaire ajouté(s) aux Notes de TASK.md`);
+  log.status(`${comments.length} owner comment(s) added to the Notes of TASK.md`);
   return comments.length;
 }
 
@@ -89,7 +89,7 @@ async function saveLearnings(project: Project, taskText: string, log: TicketLogg
   const entries = learnings(taskText);
   if (!entries.length) return;
   const saved = await setProjectMemory(db, project.id, entries);
-  if (saved) log.info(`Mémoire du projet : ${entries.length} apprentissage(s) enregistré(s)`);
+  if (saved) log.info(`Project memory: ${entries.length} learning(s) saved`);
 }
 
 async function forwardAnswers(ticket: Ticket, task: string, log: TicketLogger) {
@@ -104,10 +104,10 @@ async function forwardAnswers(ticket: Ticket, task: string, log: TicketLogger) {
         answered.map((q) => q.id),
       );
     if (error) throw new Error(`forward answers: ${error.message}`);
-    log.status(`${answered.length} réponse(s) ajoutée(s) aux Notes de TASK.md`);
+    log.status(`${answered.length} answer(s) added to the Notes of TASK.md`);
   } else if (taskState(readTask(task)).status === "BLOCKED") {
     reopen(task);
-    log.status("Relance sans réponse : STATUS: BLOCKED retiré");
+    log.status("Retry without an answer: STATUS: BLOCKED removed");
   }
 }
 
@@ -133,16 +133,16 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
   const task = taskPath(worktree);
   if (!existsSync(task)) {
     if (project.verify_commands.length) {
-      log.status("Vérification de la copie intacte avant de lancer l'agent");
+      log.status("Verifying the untouched copy before starting the agent");
       const baseline = await runCommands(project.verify_commands, worktree, log, signal);
       if (!baseline.ok) {
         throw new Error(
-          `${project.default_branch} est déjà cassé : la vérification échoue sur la copie intacte, avant toute modification. Répare ${project.default_branch} puis clique Relancer.\n${baseline.output}`,
+          `${project.default_branch} is already broken: verification fails on the untouched copy, before any change. Fix ${project.default_branch} then click Retry.\n${baseline.output}`,
         );
       }
     }
     writeFileSync(task, renderTask(ticket, project, branch, undefined, await getProjectMemory(db, project.id)), "utf8");
-    log.status("TASK.md écrit");
+    log.status("TASK.md written");
   } else {
     await forwardAnswers(ticket, task, log);
   }
@@ -155,8 +155,8 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
       await updateTicket(db, ticket.id, { status: "running" });
       const model = ticket.model || project.default_model || null;
       const effort = ticket.effort || project.default_effort || null;
-      const settings = [model && `modèle ${model}`, effort && `effort ${effort}`].filter(Boolean).join(", ");
-      log.status(`Lancement du runner Claude Code (${before.open} étape(s) ouverte(s)${settings ? `, ${settings}` : ""})`);
+      const settings = [model && `model ${model}`, effort && `effort ${effort}`].filter(Boolean).join(", ");
+      log.status(`Starting the Claude Code runner (${before.open} open step(s)${settings ? `, ${settings}` : ""})`);
       const journal = watchJournal(task, log);
       const result = await runRunner({
         worktree,
@@ -167,7 +167,7 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
         log,
         signal,
         beforePass: async () => {
-          await forwardComments(ticket, task, log).catch((error: Error) => log.error(`Commentaires : ${error.message}`));
+          await forwardComments(ticket, task, log).catch((error: Error) => log.error(`Comments: ${error.message}`));
         },
       }).finally(() => journal.stop());
       if (result.costUsd > 0) {
@@ -175,46 +175,46 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
         await updateTicket(db, ticket.id, { cost_usd: ticket.cost_usd }).catch(() => undefined);
       }
       signal.throwIfAborted();
-      if (result.timedOut) throw new Error(`Runner arrêté après ${config.runnerTimeoutMs / 60_000} min`);
+      if (result.timedOut) throw new Error(`Runner stopped after ${config.runnerTimeoutMs / 60_000} min`);
       const progressed = taskState(readTask(task));
       if (!progressed.status && progressed.done === before.done && NETWORK_ERROR.test(result.output)) {
         throw new Error(
-          "Claude Code n'a pas pu joindre son API (réseau, VPN ou proxy du gateway). Rien n'a été modifié : rétablis la connexion puis clique Relancer.",
+          "Claude Code could not reach its API (network, VPN or gateway proxy). Nothing was changed: restore the connection then click Retry.",
         );
       }
     }
 
     const after = taskState(readTask(task));
     if (after.status === "BLOCKED") {
-      await askQuestion(db, ticket.id, after.blockedReason ?? "Blocage sans détail");
+      await askQuestion(db, ticket.id, after.blockedReason ?? "Blocked without details");
       await updateTicket(db, ticket.id, { status: "blocked", summary: notesSection(readTask(task)) || null });
-      log.event("question", after.blockedReason ?? "Blocage sans détail");
+      log.event("question", after.blockedReason ?? "Blocked without details");
       log.transition("blocked", after.blockedReason ?? undefined);
       await notify("question", ticket, project, after.blockedReason ?? undefined);
       throw new Stop();
     }
     if (after.status !== "DONE") {
       throw new Error(
-        `Le runner s'est arrêté sans STATUS (${after.done} étape(s) faites, ${after.open} ouverte(s)). Voir autoclick/logs.`,
+        `The runner stopped without STATUS (${after.done} step(s) done, ${after.open} open). See autoclick/logs.`,
       );
     }
 
     // A comment that arrived during the last pass reopens the task instead of being lost.
     if ((await forwardComments(ticket, task, log).catch(() => 0)) > 0) {
       reopenForComments(task);
-      log.status("Commentaire reçu après STATUS: DONE : étape ajoutée, relance du runner");
+      log.status("Comment received after STATUS: DONE: step added, restarting the runner");
       continue;
     }
 
     await updateTicket(db, ticket.id, { status: "verifying" });
-    log.transition("verifying", `STATUS: DONE (${after.done} étapes), vérification par simple-jira`);
+    log.transition("verifying", `STATUS: DONE (${after.done} steps), verification by simple-jira`);
     const check = await runCommands(project.verify_commands, worktree, log, signal);
 
     const checkDetail = check.ok ? "" : `\n${check.output.slice(-1500)}`;
-    log.event("check", `${check.ok ? "✓" : "✗"} Vérification simple-jira${checkDetail}`, { ok: check.ok });
+    log.event("check", `${check.ok ? "✓" : "✗"} simple-jira verification${checkDetail}`, { ok: check.ok });
     if (check.ok) {
       const taskText = readTask(task);
-      await saveLearnings(project, taskText, log).catch((error: Error) => log.error(`Mémoire : ${error.message}`));
+      await saveLearnings(project, taskText, log).catch((error: Error) => log.error(`Memory: ${error.message}`));
       const { prUrl, diffStat } = await deliver({ ticket, project, worktree, branch, taskText, log, signal });
       const notes = notesSection(taskText);
       await updateTicket(db, ticket.id, {
@@ -224,19 +224,19 @@ async function execute(initial: Ticket, log: TicketLogger, signal: AbortSignal) 
         finished_at: now(),
         merge_requested_at: ticket.auto_merge || ticket.merge_requested_at ? now() : null,
       });
-      log.event("pr", `Pull request : ${prUrl}`, { url: prUrl });
-      log.transition("delivered", `worktree conservé : ${worktree}`);
+      log.event("pr", `Pull request: ${prUrl}`, { url: prUrl });
+      log.transition("delivered", `worktree kept: ${worktree}`);
       await notify("pr_ready", ticket, project, prUrl);
-      if (ticket.auto_merge || ticket.merge_requested_at) log.status("Merge en prod demandé : il part automatiquement");
+      if (ticket.auto_merge || ticket.merge_requested_at) log.status("Merge to prod requested: it ships automatically");
       return;
     }
 
     attempts += 1;
     await updateTicket(db, ticket.id, { verify_attempts: attempts });
     if (attempts >= config.maxVerifyAttempts) {
-      throw new Error(`La vérification échoue encore après ${attempts} relance(s) de l'agent`);
+      throw new Error(`Verification still fails after ${attempts} agent retry(ies)`);
     }
     reopenAfterFailedCheck(task, check.output);
-    log.status("Vérification en échec : étape ajoutée à TASK.md, relance du runner");
+    log.status("Verification failed: step added to TASK.md, restarting the runner");
   }
 }

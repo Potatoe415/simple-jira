@@ -15,11 +15,11 @@ export function MemoryEditor({ projectId, memory }: { projectId: string; memory:
   return (
     <div className="space-y-3">
       <p className="text-xs text-zinc-500">
-        Ajoutée à chaque TASK.md de ce projet. L&apos;agent l&apos;enrichit avec ses apprentissages quand un ticket se
-        termine (40 entrées max, les plus récentes gardées).
+        Added to every TASK.md of this project. The agent enriches it with what it learns when a ticket
+        finishes (40 entries max, most recent kept).
       </p>
       {memory.length === 0 ? (
-        <p className="text-sm text-zinc-500">Aucune entrée.</p>
+        <p className="text-sm text-zinc-500">No entries.</p>
       ) : (
         <ul className="space-y-1 text-sm">
           {memory.map((entry) => (
@@ -31,7 +31,7 @@ export function MemoryEditor({ projectId, memory }: { projectId: string; memory:
               <form action={deleteMemoryAction}>
                 <input type="hidden" name="project_id" value={projectId} />
                 <input type="hidden" name="id" value={entry.id} />
-                <button className="text-xs text-zinc-500 hover:text-red-400" title="Supprimer" aria-label="Supprimer">
+                <button className="text-xs text-zinc-500 hover:text-red-400" title="Delete" aria-label="Delete">
                   ✕
                 </button>
               </form>
@@ -41,10 +41,10 @@ export function MemoryEditor({ projectId, memory }: { projectId: string; memory:
       )}
       <form ref={formRef} action={action} className="flex flex-wrap items-start gap-2">
         <input type="hidden" name="project_id" value={projectId} />
-        <input name="key" required maxLength={100} placeholder="Sujet (ex. build)" className="input w-40" />
-        <input name="body" required maxLength={500} placeholder="Le fait à retenir" className="input min-w-48 flex-1" />
+        <input name="key" required maxLength={100} placeholder="Topic (e.g. build)" className="input w-40" />
+        <input name="body" required maxLength={500} placeholder="The fact to remember" className="input min-w-48 flex-1" />
         <button className="btn" disabled={pending}>
-          {pending ? "…" : "Ajouter ou remplacer"}
+          {pending ? "…" : "Add or replace"}
         </button>
         {state.error && <span className="w-full whitespace-pre-wrap text-sm text-red-400">{state.error}</span>}
       </form>

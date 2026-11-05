@@ -26,7 +26,7 @@ export function slugify(text: string, max = 40): string {
 
 export const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._\[\]-]{0,63}$/;
 
-export const modelSchema = z.string().trim().regex(MODEL_RE, "model: identifiant de modèle (ex. opus, sonnet)");
+export const modelSchema = z.string().trim().regex(MODEL_RE, "model: model identifier (e.g. opus, sonnet)");
 export const effortSchema = z.enum(EFFORTS);
 
 // A ticket reference: its uuid or its number (#n).
@@ -37,7 +37,7 @@ const lines = z
   .transform((items) => items.filter((item) => item.length > 0));
 
 export const newProjectSpecSchema = z.object({
-  slug: z.string().trim().regex(SLUG_RE, "slug: minuscules, chiffres et tirets"),
+  slug: z.string().trim().regex(SLUG_RE, "slug: lowercase letters, digits and dashes"),
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(4000).default(""),
 });
@@ -48,7 +48,7 @@ export const createTicketSchema = z
     project_slug: z.string().trim().optional(),
     title: z.string().trim().min(1).max(200),
     description: z.string().trim().min(1).max(20000),
-    slug: z.string().trim().regex(TASK_SLUG_RE, "slug: minuscules, chiffres et tirets").optional(),
+    slug: z.string().trim().regex(TASK_SLUG_RE, "slug: lowercase letters, digits and dashes").optional(),
     goal: z.string().trim().max(4000).optional(),
     steps: lines.default([]),
     auto_merge: z.boolean().default(false),
@@ -58,22 +58,22 @@ export const createTicketSchema = z
     effort: effortSchema.optional(),
     parent_id: ticketRefSchema.optional(),
     blocked_by: z.array(ticketRefSchema).max(20).default([]),
-    check_paths: z.array(z.string().trim().regex(/^\/[^\s]*$/, "chemin : commence par /")).max(10).default([]),
+    check_paths: z.array(z.string().trim().regex(/^\/[^\s]*$/, "path: must start with /")).max(10).default([]),
     source: z.enum(["mcp", "dashboard"]).default("dashboard"),
   })
   .superRefine((value, ctx) => {
     if (value.type === "new_project" && !value.new_project) {
-      ctx.addIssue({ code: "custom", path: ["new_project"], message: "new_project requis" });
+      ctx.addIssue({ code: "custom", path: ["new_project"], message: "new_project required" });
     }
     if (value.type !== "new_project" && !value.project_slug) {
-      ctx.addIssue({ code: "custom", path: ["project_slug"], message: "project_slug requis" });
+      ctx.addIssue({ code: "custom", path: ["project_slug"], message: "project_slug required" });
     }
   });
 
 export type CreateTicketInput = z.input<typeof createTicketSchema>;
 
 export const projectSchema = z.object({
-  slug: z.string().trim().regex(SLUG_RE, "slug: minuscules, chiffres et tirets"),
+  slug: z.string().trim().regex(SLUG_RE, "slug: lowercase letters, digits and dashes"),
   name: z.string().trim().min(1).max(100),
   aliases: lines.default([]),
   description: z.string().trim().max(4000).default(""),

@@ -41,8 +41,8 @@ export function TicketActions(props: Props) {
           href={props.preview_url}
           target="_blank"
           rel="noreferrer"
-          title="Voir la preview"
-          aria-label="Voir la preview"
+          title="View preview"
+          aria-label="View preview"
           className={`${iconButton} border-sky-800 text-sky-300 hover:bg-sky-950`}
         >
           <EyeIcon />
@@ -50,7 +50,7 @@ export function TicketActions(props: Props) {
         </a>
       ) : (
         canMerge && (
-          <span className={`${iconButton} border-zinc-800 text-zinc-500`} title="Preview en cours de déploiement">
+          <span className={`${iconButton} border-zinc-800 text-zinc-500`} title="Preview deploying">
             <EyeIcon />
             <span className="hidden sm:inline">…</span>
           </span>
@@ -60,18 +60,18 @@ export function TicketActions(props: Props) {
         <button
           type="button"
           disabled={merging}
-          title="Merger en prod"
-          aria-label="Merger en prod"
+          title="Merge to prod"
+          aria-label="Merge to prod"
           className={`${iconButton} border-emerald-800 text-emerald-300 hover:bg-emerald-950`}
           onClick={() => {
-            if (!confirm(`Merger le ticket #${props.number} dans main ? Il partira en prod.`)) return;
+            if (!confirm(`Merge ticket #${props.number} into main? It will ship to prod.`)) return;
             const form = new FormData();
             form.set("ticket_id", props.id);
             startTransition(() => requestMergeAction(form));
           }}
         >
           <MergeIcon />
-          <span className="hidden sm:inline">{merging ? "Merge…" : "Merger en prod"}</span>
+          <span className="hidden sm:inline">{merging ? "Merge…" : "Merge to prod"}</span>
         </button>
       )}
     </div>

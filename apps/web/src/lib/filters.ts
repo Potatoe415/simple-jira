@@ -9,11 +9,11 @@ import {
 
 // Status groups of the side panel, also usable as `?view=` in the dashboard URL.
 export const VIEWS = {
-  actives: { label: "Actives", statuses: ["queued", "running", "verifying"] },
-  questions: { label: "En attente de réponse", statuses: ["blocked"] },
-  pr: { label: "PR prêtes", statuses: ["delivered"] },
-  prod: { label: "En prod", statuses: ["merged"] },
-  echecs: { label: "Échecs", statuses: ["failed"] },
+  actives: { label: "Active", statuses: ["queued", "running", "verifying"] },
+  questions: { label: "Waiting for answer", statuses: ["blocked"] },
+  pr: { label: "PRs ready", statuses: ["delivered"] },
+  prod: { label: "In prod", statuses: ["merged"] },
+  echecs: { label: "Failures", statuses: ["failed"] },
 } as const satisfies Record<string, { label: string; statuses: readonly TicketStatus[] }>;
 
 export type View = keyof typeof VIEWS;

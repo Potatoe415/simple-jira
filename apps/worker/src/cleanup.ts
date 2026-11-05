@@ -12,13 +12,13 @@ if (!Number.isInteger(number) || number <= 0) {
 }
 
 const ticket = await getTicketByNumber(db, number);
-if (!ticket) throw new Error(`Ticket #${number} introuvable`);
+if (!ticket) throw new Error(`Ticket #${number} not found`);
 if (!ticket.worktree_path || !ticket.project_id) {
-  console.log(`Ticket #${number} n'a pas de worktree.`);
+  console.log(`Ticket #${number} has no worktree.`);
   process.exit(0);
 }
 if (["queued", "running", "verifying"].includes(ticket.status)) {
-  throw new Error(`Ticket #${number} est ${ticket.status} : annule-le d'abord`);
+  throw new Error(`Ticket #${number} is ${ticket.status}: cancel it first`);
 }
 
 const project = await getProject(db, ticket.project_id);
@@ -28,8 +28,8 @@ await removeWorktree(project, ticket.worktree_path);
 if (ticket.branch && !ticket.pr_url) {
   await git(["branch", "-D", ticket.branch], project.local_path).catch(() => undefined);
   await updateTicket(db, ticket.id, { worktree_path: null, branch: null, verify_attempts: 0 });
-  console.log(`Worktree ${ticket.worktree_path} et branche ${ticket.branch} supprimés : prêt pour une relance.`);
+  console.log(`Worktree ${ticket.worktree_path} and branch ${ticket.branch} removed: ready for a retry.`);
 } else {
   await updateTicket(db, ticket.id, { worktree_path: null });
-  console.log(`Worktree ${ticket.worktree_path} supprimé (branche ${ticket.branch} conservée).`);
+  console.log(`Worktree ${ticket.worktree_path} removed (branch ${ticket.branch} kept).`);
 }

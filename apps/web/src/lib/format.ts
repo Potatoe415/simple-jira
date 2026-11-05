@@ -1,4 +1,4 @@
-const relative = new Intl.RelativeTimeFormat("fr", { numeric: "auto" });
+const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
 export function timeAgo(iso: string, now = Date.now()): string {
   const seconds = Math.round((new Date(iso).getTime() - now) / 1000);
@@ -10,5 +10,5 @@ export function timeAgo(iso: string, now = Date.now()): string {
 }
 
 export function clockTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("fr-FR", { timeZone: "Europe/Paris" });
+  return new Date(iso).toLocaleTimeString("en-GB", { timeZone: "Europe/Paris" });
 }

@@ -10,10 +10,10 @@ export async function signInAction(_: { error?: string }, form: FormData): Promi
 
   const supabase = await authClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: "Identifiants invalides" };
+  if (error) return { error: "Invalid credentials" };
   if (!isOwnerEmail(email)) {
     await supabase.auth.signOut();
-    return { error: "Compte non autorisé" };
+    return { error: "Account not authorized" };
   }
   redirect("/");
 }

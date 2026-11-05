@@ -8,7 +8,7 @@ import type { TicketLogger } from "./logger";
 
 export async function createNewProject(ticket: Ticket, log: TicketLogger, signal: AbortSignal): Promise<Project> {
   const spec = ticket.new_project;
-  if (!spec) throw new Error("Ticket new_project sans spécification");
+  if (!spec) throw new Error("new_project ticket without a specification");
 
   const existing = await getProjectBySlug(db, spec.slug);
   if (existing) return existing;
@@ -16,9 +16,9 @@ export async function createNewProject(ticket: Ticket, log: TicketLogger, signal
   const dir = join(config.projectsRoot, spec.slug);
   if (!existsSync(join(dir, ".git"))) {
     if (existsSync(dir) && readdirSync(dir).length > 0) {
-      throw new Error(`Le dossier ${dir} existe déjà et n'est pas un dépôt git`);
+      throw new Error(`Folder ${dir} already exists and is not a git repository`);
     }
-    log.status(`Création du dépôt local ${dir}`);
+    log.status(`Creating local repository ${dir}`);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "README.md"), `# ${spec.name}\n\n${spec.description}\n`, "utf8");
     await git(["init", "-b", "main"], dir, signal);
@@ -29,7 +29,7 @@ export async function createNewProject(ticket: Ticket, log: TicketLogger, signal
   const remotes = await git(["remote"], dir, signal);
   if (!remotes.split(/\s+/).includes("origin")) {
     const name = config.githubOwner ? `${config.githubOwner}/${spec.slug}` : spec.slug;
-    log.status(`Création du repo GitHub privé ${name}`);
+    log.status(`Creating private GitHub repo ${name}`);
     const args = ["repo", "create", name, "--private", "--source", dir, "--remote", "origin", "--push"];
     if (spec.description) args.push("--description", spec.description.slice(0, 300));
     await gh(args, dir, signal);
@@ -44,6 +44,6 @@ export async function createNewProject(ticket: Ticket, log: TicketLogger, signal
     repo,
     default_branch: "main",
   });
-  log.status(`Projet ${project.name} enregistré (${repo})`);
+  log.status(`Project ${project.name} registered (${repo})`);
   return project;
 }

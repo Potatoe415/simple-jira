@@ -15,7 +15,7 @@ export function LoginForm() {
       </div>
       <div>
         <label className="label" htmlFor="password">
-          Mot de passe
+          Password
         </label>
         <input
           id="password"
@@ -28,7 +28,7 @@ export function LoginForm() {
       </div>
       {state.error && <p className="text-sm text-red-400">{state.error}</p>}
       <button className="btn w-full" disabled={pending}>
-        {pending ? "Connexion…" : "Se connecter"}
+        {pending ? "Signing in…" : "Sign in"}
       </button>
     </form>
   );
