@@ -11,6 +11,7 @@ import {
 } from "./schemas";
 import {
   ACTIVE_STATUSES,
+  FINAL_STATUSES,
   type EventKind,
   type OpenQuestion,
   type Priority,
@@ -470,6 +471,28 @@ export async function retryTicket(db: Db, ticketId: string): Promise<void> {
   if (error) fail("retryTicket", error);
   if (!data.length) throw new Error("Only a failed or cancelled ticket can be retried");
   await addEvent(db, ticketId, "status", "Retry requested");
+}
+
+// Events and questions go with the ticket (on delete cascade); sub-tickets lose their parent (set null).
+// Worktree and branch on the worker machine are left as they are.
+export async function deleteTicket(db: Db, ticketId: string): Promise<void> {
+  const { data: dependents, error: dependentsError } = await db
+    .from("tickets")
+    .select("number")
+    .contains("blocked_by", [ticketId])
+    .in("status", [...ACTIVE_STATUSES]);
+  if (dependentsError) fail("deleteTicket", dependentsError);
+  if (dependents.length) {
+    throw new Error(`Active ticket(s) ${dependents.map((t) => `#${t.number}`).join(", ")} depend on this one`);
+  }
+  const { data, error } = await db
+    .from("tickets")
+    .delete()
+    .eq("id", ticketId)
+    .in("status", [...FINAL_STATUSES])
+    .select("id");
+  if (error) fail("deleteTicket", error);
+  if (!data.length) throw new Error("Only a finished ticket can be deleted: cancel it first");
 }
 
 export async function setPriority(db: Db, ticketId: string, priority: number): Promise<void> {

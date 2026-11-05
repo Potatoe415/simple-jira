@@ -3,17 +3,16 @@
 Replace on every update. Max 40 lines. History lives in git and `docs/decisions/`.
 
 Status: Aligned with bootstrap v10.1 on 2026-11-05 (branch `chore/align-bootstrap-v10-1`).
-Focus: Light, Jira-like look and feel for the web app (uncommitted on `main`). Previous focus (review aligned docs) still open.
-Level: L0
+Focus: Delete button on ticket rows (uncommitted on `main`). Jira-like look shipped in 005c6d3.
+Level: L1
 
 Context:
-- Working_On: `apps/web/src/app/globals.css` (design tokens), `components/header.tsx` (top bar, now in dashboard layout), `components/side-panel.tsx`, `components/status-badge.tsx` (lozenges, type/priority icons, project labels), `components/ticket-row.tsx`, `app/(dashboard)/page.tsx` (sprint-style panels)
-- Relevant_Files: all `apps/web/src/components/*.tsx`
-- Do_Not_Touch: data, actions, API routes
+- Working_On: `packages/core/src/ops.ts` (`deleteTicket`), `apps/web/src/app/actions.ts` (`deleteTicketAction`), `apps/web/src/components/delete-ticket-button.tsx`, `components/ticket-row.tsx`
+- Rules: only finished tickets (FINAL_STATUSES) can be deleted; refused while an active ticket depends on it; events and questions cascade; worktree and branch are not touched
 - Relevant_Decisions: 0001
 
 Next:
-- Visual check in the browser (`pnpm dev`), then commit.
+- Visual check in the browser (`pnpm dev`), then commit the delete button.
 - User confirms or corrects every `(inferred — confirm)` marker.
 - Extend `pnpm check` with lint, tests, and dependency audit (BACKLOG).
 - Decide the target structure: keep `apps/*` + `packages/core`, or move to `src/modules/` (BACKLOG).

@@ -1,6 +1,7 @@
 import type { TicketWithProject } from "@simple-jira/core";
 import Link from "next/link";
 import { timeAgo } from "@/lib/format";
+import { DeleteTicketButton } from "./delete-ticket-button";
 import { PriorityIcon, ProjectLabel, StatusBadge, TypeIcon } from "./status-badge";
 import { TicketActions } from "./ticket-actions";
 
@@ -30,6 +31,7 @@ export function TicketRow({ ticket }: { ticket: TicketWithProject }) {
         pr_url={ticket.pr_url}
         merge_requested_at={ticket.merge_requested_at}
       />
+      <DeleteTicketButton id={ticket.id} number={ticket.number} status={ticket.status} />
     </li>
   );
 }

@@ -6,6 +6,7 @@ import {
   cancelTicket,
   createTicket,
   deleteProjectMemory,
+  deleteTicket,
   MIGRATION_HINT,
   requestMerge,
   retryTicket,
@@ -98,6 +99,19 @@ export async function cancelTicketAction(form: FormData) {
   await requireOwner();
   await cancelTicket(adminDb(), field(form, "ticket_id"));
   revalidatePath("/", "layout");
+}
+
+export async function deleteTicketAction(_: ActionState, form: FormData): Promise<ActionState> {
+  await requireOwner();
+  const id = z.uuid().safeParse(field(form, "ticket_id"));
+  if (!id.success) return { error: "Invalid ticket" };
+  try {
+    await deleteTicket(adminDb(), id.data);
+  } catch (error) {
+    return { error: errorMessage(error) };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 export async function setPriorityAction(form: FormData) {
