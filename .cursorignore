@@ -1,0 +1,30 @@
+# Secrets: never expose to AI context
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Dependencies and build output
+node_modules/
+.venv/
+dist/
+build/
+out/
+.next/
+coverage/
+
+# Logs and temp
+*.log
+logs/
+tmp/
+temp/
+.cache/
+
+# Large local data
+data/raw/
+data/exports/
+*.sqlite
+*.db
+*.dump

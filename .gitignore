@@ -12,3 +12,32 @@ logs/
 *.log
 .vercel
 .env*
+!.env.example
+
+# Secrets
+*.pem
+*.key
+secrets/
+
+# Local agent overrides
+CLAUDE.local.md
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Dependencies
+.venv/
+__pycache__/
+
+# Build output
+build/
+coverage/
+
+# Temporary
+tmp/
+temp/
+.cache/
