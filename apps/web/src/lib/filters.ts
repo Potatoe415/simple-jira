@@ -9,6 +9,7 @@ import {
 
 // Status groups of the side panel, also usable as `?view=` in the dashboard URL.
 export const VIEWS = {
+  ideas: { label: "Ideas", statuses: ["idea"] },
   actives: { label: "Active", statuses: ["queued", "running", "verifying"] },
   questions: { label: "Waiting for answer", statuses: ["blocked"] },
   pr: { label: "PRs ready", statuses: ["delivered"] },

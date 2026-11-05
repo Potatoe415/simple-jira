@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   createTicketSchema,
+  startIdeaSchema,
   PROJECT_NEW_COLUMNS,
   prioritySchema,
   projectSchema,
@@ -8,6 +9,7 @@ import {
   TICKET_NEW_COLUMNS,
   type CreateTicketInput,
   type ProjectInput,
+  type StartIdeaInput,
 } from "./schemas";
 import {
   ACTIVE_STATUSES,
@@ -44,9 +46,16 @@ export function isMissingSchema(error: DbError): boolean {
   return /does not exist|could not find the .*(column|table)|schema cache/i.test(error.message);
 }
 
+function isStatusCheck(error: DbError): boolean {
+  return error?.code === "23514" && /tickets_status_check/.test(error.message);
+}
+
 function isKindCheck(error: DbError): boolean {
   return error?.code === "23514" && /ticket_events_kind_check/.test(error.message);
 }
+
+export const IDEAS_MIGRATION_HINT =
+  "Ideas need the migration supabase/migrations/20261105150000_ideas.sql: apply it in the Supabase SQL editor.";
 
 export const MIGRATION_HINT =
   "Apply the migration supabase/migrations/20261105090000_agent_visibility.sql in the Supabase SQL editor.";
@@ -258,6 +267,7 @@ export async function createTicket(db: Db, input: CreateTicketInput): Promise<Ti
     priority: values.priority,
     new_project: values.type === "new_project" ? values.new_project : null,
     source: values.source,
+    ...(values.idea ? { status: "idea" } : {}),
     ...(values.model ? { model: values.model } : {}),
     ...(values.effort ? { effort: values.effort } : {}),
     ...(parentId ? { parent_id: parentId } : {}),
@@ -269,10 +279,11 @@ export async function createTicket(db: Db, input: CreateTicketInput): Promise<Ti
   let { data, error } = await insert(row);
   const dropped = isMissingSchema(error) ? TICKET_NEW_COLUMNS.filter((key) => key in row) : [];
   if (dropped.length) ({ data, error } = await insert(without(row, TICKET_NEW_COLUMNS)));
+  if (values.idea && isStatusCheck(error)) throw new Error(IDEAS_MIGRATION_HINT);
   if (error) fail("createTicket", error);
 
   const ticket = data as Ticket;
-  await addEvent(db, ticket.id, "status", `Ticket created (${values.source})`);
+  await addEvent(db, ticket.id, "status", values.idea ? `Idea saved (${values.source})` : `Ticket created (${values.source})`);
   if (dropped.length) await addEvent(db, ticket.id, "info", `Fields ignored (${dropped.join(", ")}). ${MIGRATION_HINT}`);
   return ticket;
 }
@@ -489,10 +500,25 @@ export async function deleteTicket(db: Db, ticketId: string): Promise<void> {
     .from("tickets")
     .delete()
     .eq("id", ticketId)
-    .in("status", [...FINAL_STATUSES])
+    .in("status", [...FINAL_STATUSES, "idea"])
     .select("id");
   if (error) fail("deleteTicket", error);
-  if (!data.length) throw new Error("Only a finished ticket can be deleted: cancel it first");
+  if (!data.length) throw new Error("Only an idea or a finished ticket can be deleted: cancel it first");
+}
+
+// Turns an idea into a real task: optional details first, then into the queue.
+export async function startIdea(db: Db, ticketId: string, input: StartIdeaInput = {}): Promise<void> {
+  const values = startIdeaSchema.parse(input);
+  const patch = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined));
+  const { data, error } = await db
+    .from("tickets")
+    .update({ ...patch, status: "queued" })
+    .eq("id", ticketId)
+    .eq("status", "idea")
+    .select("id");
+  if (error) fail("startIdea", error);
+  if (!data.length) throw new Error("Only an idea can be started");
+  await addEvent(db, ticketId, "status", "Idea started: queued");
 }
 
 export async function setPriority(db: Db, ticketId: string, priority: number): Promise<void> {

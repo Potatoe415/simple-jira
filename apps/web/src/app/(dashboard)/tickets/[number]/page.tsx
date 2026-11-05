@@ -11,7 +11,7 @@ import {
 } from "@simple-jira/core";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { cancelTicketAction, retryTicketAction, setPriorityAction } from "@/app/actions";
+import { cancelTicketAction, retryTicketAction, setPriorityAction, startIdeaAction } from "@/app/actions";
 import { AnswerForm } from "@/components/answer-form";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { CommentForm } from "@/components/comment-form";
@@ -98,6 +98,14 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
           <form action={cancelTicketAction}>
             <input type="hidden" name="ticket_id" value={ticket.id} />
             <button className="btn-ghost">Cancel</button>
+          </form>
+        )}
+        {ticket.status === "idea" && (
+          <form action={startIdeaAction}>
+            <input type="hidden" name="ticket_id" value={ticket.id} />
+            <button className="btn" title="Queue this idea: the worker will develop it">
+              Start
+            </button>
           </form>
         )}
         {canRetry && (

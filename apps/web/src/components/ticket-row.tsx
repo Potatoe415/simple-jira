@@ -1,6 +1,7 @@
 import type { TicketWithProject } from "@simple-jira/core";
 import Link from "next/link";
 import { timeAgo } from "@/lib/format";
+import { startIdeaAction } from "@/app/actions";
 import { DeleteTicketButton } from "./delete-ticket-button";
 import { PriorityIcon, ProjectLabel, StatusBadge, TypeIcon } from "./status-badge";
 import { TicketActions } from "./ticket-actions";
@@ -31,6 +32,14 @@ export function TicketRow({ ticket }: { ticket: TicketWithProject }) {
         pr_url={ticket.pr_url}
         merge_requested_at={ticket.merge_requested_at}
       />
+      {ticket.status === "idea" && (
+        <form action={startIdeaAction}>
+          <input type="hidden" name="ticket_id" value={ticket.id} />
+          <button className="btn-ghost h-8 py-0 text-xs" title="Queue this idea: the worker will develop it">
+            Start
+          </button>
+        </form>
+      )}
       <DeleteTicketButton id={ticket.id} number={ticket.number} status={ticket.status} />
     </li>
   );

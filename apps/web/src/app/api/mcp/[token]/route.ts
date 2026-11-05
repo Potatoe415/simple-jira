@@ -19,6 +19,7 @@ import {
   requestMerge,
   retryTicket,
   setPriority,
+  startIdea,
   STATUS_LABELS,
   TICKET_TYPES,
   TYPE_LABELS,
@@ -43,6 +44,8 @@ const INSTRUCTIONS = `simple-jira turns dictated requests into tickets that Clau
 - To pass a clarification to an agent that is working (not blocked), call comment_ticket: it reads it before its next pass.
 - model / effort: only if the user asks for it ("use opus", "max effort"). Otherwise leave empty: the project default applies.
 - To split a big request, create the parent ticket then sub-tickets (create_sub_ticket or parent_id). blocked_by lists the tickets that must have a ready PR or be in prod before this one starts.
+- Ideas: when the user says "just an idea", "note this", "for later", "don't build it", "juste une idée" or equivalent, call save_idea instead of create_ticket. No questions, goal or steps needed: keep their words. An idea is never developed until started.
+- To start an idea ("start idea #12", "build idea #12"), call get_ticket, clarify what is missing like for a new ticket, then start_idea with goal, steps and slug.
 - delete_ticket is permanent: only on the user's explicit request, after confirming the ticket number and title with them. An active ticket must be cancelled first (cancel_ticket).`;
 
 function text(value: string) {
@@ -207,6 +210,72 @@ const handler = createMcpHandler(
     );
 
     server.registerTool(
+      "save_idea",
+      {
+        title: "Save an idea",
+        description:
+          "Saves an idea for later without developing it: the worker ignores it until start_idea. Use when the user only wants to note something.",
+        inputSchema: z.object({
+          type: z.enum(TICKET_TYPES).default("feature"),
+          project_slug: z.string().optional().describe("slug returned by list_projects (except new_project)"),
+          title: z.string().min(1).max(200).describe("short, explicit title"),
+          description: z.string().min(1).describe("the idea, in the user's words"),
+          new_project: z
+            .object({
+              slug: z.string().describe("lowercase letters, digits and dashes, used as the repo name"),
+              name: z.string(),
+              description: z.string(),
+            })
+            .optional(),
+        }),
+      },
+      async (input) => {
+        try {
+          const ticket = await createTicket(adminDb(), { ...input, idea: true, source: "mcp" });
+          return text(`Idea #${ticket.number} saved: ${ticket.title}. It will not be developed until you start it.`);
+        } catch (error) {
+          return failure(error);
+        }
+      },
+    );
+
+    server.registerTool(
+      "start_idea",
+      {
+        title: "Start an idea",
+        description:
+          "Turns a saved idea into a task and queues it. Give goal, steps and slug as for create_ticket; fields left out keep their current value.",
+        inputSchema: z.object({
+          number: z.number().int().positive(),
+          title: z.string().min(1).max(200).optional(),
+          description: z.string().min(1).optional().describe("the full request, with the details gathered since"),
+          goal: z.string().min(1).describe("one or two sentences: what 'done' looks like"),
+          steps: z.array(z.string().min(1)).min(1).max(15).describe("concrete, verifiable steps, in English"),
+          slug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,47}$/).describe("short English kebab-case, branch name"),
+          auto_merge: z
+            .boolean()
+            .default(true)
+            .describe("true by default (straight to prod); false only if the user explicitly says not to push to prod"),
+          priority: z.number().int().min(1).max(3).default(3),
+          model: z.string().regex(MODEL_RE).optional(),
+          effort: z.enum(EFFORTS).optional(),
+        }),
+      },
+      async ({ number, ...input }) => {
+        try {
+          const db = adminDb();
+          const ticket = await getTicketByNumber(db, number);
+          if (!ticket) return failure(new Error(`Ticket #${number} not found`));
+          await startIdea(db, ticket.id, input);
+          const delivery = input.auto_merge ? "merged straight to prod once delivered" : "delivered as a PR to review";
+          return text(`Idea #${number} started: queued, the worker will pick it up within 5 minutes; ${delivery}.`);
+        } catch (error) {
+          return failure(error);
+        }
+      },
+    );
+
+    server.registerTool(
       "comment_ticket",
       {
         title: "Comment on a ticket",
@@ -283,18 +352,20 @@ const handler = createMcpHandler(
       "list_tickets",
       {
         title: "List tickets",
-        description: "Lists active (default) or recent tickets, with their status and PR link.",
+        description: "Lists active (default), recent tickets, or saved ideas, with their status and PR link.",
         inputSchema: z.object({
-          scope: z.enum(["active", "recent"]).default("active"),
+          scope: z.enum(["active", "recent", "ideas"]).default("active"),
         }),
       },
       async ({ scope }) => {
         try {
           const tickets = await listTickets(adminDb(), {
-            statuses: scope === "active" ? ACTIVE_STATUSES : undefined,
-            limit: 20,
+            statuses: scope === "active" ? ACTIVE_STATUSES : scope === "ideas" ? ["idea"] : undefined,
+            limit: scope === "ideas" ? 50 : 20,
           });
-          if (!tickets.length) return text(scope === "active" ? "No active tickets." : "No tickets.");
+          if (!tickets.length) {
+            return text(scope === "active" ? "No active tickets." : scope === "ideas" ? "No saved ideas." : "No tickets.");
+          }
           return text(tickets.map(ticketLine).join("\n"));
         } catch (error) {
           return failure(error);
@@ -412,7 +483,7 @@ const handler = createMcpHandler(
       {
         title: "Delete a ticket",
         description:
-          "Permanently deletes a finished ticket (PR ready, in prod, failed or cancelled) with its log and questions. Refused for an active ticket (cancel it first) or one an active ticket depends on. Only on the user's explicit request, after confirmation.",
+          "Permanently deletes an idea or a finished ticket (PR ready, in prod, failed or cancelled) with its log and questions. Refused for an active ticket (cancel it first) or one an active ticket depends on. Only on the user's explicit request, after confirmation.",
         inputSchema: z.object({ number: z.number().int().positive() }),
       },
       async ({ number }) => {

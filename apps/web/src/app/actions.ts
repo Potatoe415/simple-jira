@@ -13,6 +13,7 @@ import {
   saveProject,
   setPriority,
   setProjectMemory,
+  startIdea,
   type Effort,
   type TicketType,
 } from "@simple-jira/core";
@@ -74,6 +75,7 @@ export async function createTicketAction(_: ActionState, form: FormData): Promis
         ? { slug: field(form, "new_slug"), name: field(form, "new_name"), description: field(form, "description") }
         : undefined,
       source: "dashboard",
+      idea: form.get("idea") === "on",
     });
     number = ticket.number;
   } catch (error) {
@@ -93,6 +95,12 @@ export async function answerQuestionAction(_: ActionState, form: FormData): Prom
   }
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+export async function startIdeaAction(form: FormData) {
+  await requireOwner();
+  await startIdea(adminDb(), field(form, "ticket_id"));
+  revalidatePath("/", "layout");
 }
 
 export async function cancelTicketAction(form: FormData) {

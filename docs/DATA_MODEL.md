@@ -23,6 +23,7 @@ Auth users live in Supabase Auth (`auth.users`); the app only compares the sessi
 
 - `tickets.project_id` references `projects.id` (`on delete restrict`). Required unless `type = 'new_project'`, which uses `tickets.new_project` (jsonb) instead.
 - `questions.ticket_id` and `ticket_events.ticket_id` reference `tickets.id` (`on delete cascade`).
+- `tickets.status`: `idea` (saved for later, never claimed by the worker until started), then `queued` → `running` / `blocked` / `verifying` → `delivered` / `merged` / `failed` / `cancelled`. See decision 0002.
 - `tickets.parent_id` references `tickets.id` (`on delete set null`); `tickets.blocked_by` is a `uuid[]` of ticket ids (no foreign key).
 - `project_memory.project_id` references `projects.id` (`on delete cascade`); unique on `(project_id, key)`.
 - `worker_status.current_ticket_id` references `tickets.id` (`on delete set null`).

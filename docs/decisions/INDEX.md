@@ -7,6 +7,7 @@ Template: `docs/_templates/DECISION.md`.
 | # | Date | Title | Status |
 |---|---|---|---|
 | 0001 | 2026-11-05 | Context architecture bootstrap v10.1 | Accepted |
+| 0002 | 2026-11-05 | Ideas as a ticket status | Accepted |
 
 ## When to log a decision
 Any of:

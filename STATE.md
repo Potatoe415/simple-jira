@@ -3,15 +3,15 @@
 Replace on every update. Max 40 lines. History lives in git and `docs/decisions/`.
 
 Status: Aligned with bootstrap v10.1 on 2026-11-05 (branch `chore/align-bootstrap-v10-1`).
-Focus: Agent questions moved from the dashboard block to a bell in the top bar (count badge + dropdown with answer forms). Changes are committed and pushed to `main` automatically (test env).
-Level: L1
+Focus: Ideas (status `idea`, decision 0002): save from the phone (MCP `save_idea`) or the dashboard form, start later (`start_idea`, Start button). Changes are committed and pushed to `main` automatically (test env).
+Level: L2
 
 Context:
-- Working_On: `apps/web/src/components/alerts-menu.tsx`, `components/header.tsx`, `app/(dashboard)/layout.tsx` (loads open questions), `app/(dashboard)/page.tsx`
-- Recent: straight to prod by default + post-merge cleanup (2166a2a), Context download link (9fbbcea), ticket deletion (7c6d134, 9ed22ac)
-- Relevant_Decisions: 0001
+- Working_On: `supabase/migrations/20261105150000_ideas.sql`, `packages/core/src/{types,schemas,ops}.ts` (`startIdea`, `idea` flag), `apps/web/src/app/api/mcp/[token]/route.ts`, `docs/claude-app-context.md`, web form / row / ticket page / side panel view
+- Relevant_Decisions: 0001, 0002
 
 Next:
+- Owner applies `supabase/migrations/20261105150000_ideas.sql` in the Supabase SQL editor; until then saving an idea returns a migration hint.
 - Restart the worker so the post-merge cleanup runs; watch the next merged ticket's log for "Cleaned up".
 - Check on the deployed app that the Context link downloads the file (Vercel file tracing), and the delete button in the browser.
 - User confirms or corrects every `(inferred — confirm)` marker.

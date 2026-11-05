@@ -2,6 +2,7 @@ import { STATUS_LABELS, TYPE_LABELS, type Priority, type TicketStatus, type Tick
 
 // Subtle lozenges, Atlassian style: uppercase, bold, 3px radius.
 const COLORS: Record<TicketStatus, string> = {
+  idea: "bg-[#fdd0ec] text-[#943d73]",
   queued: "bg-[#dfe1e6] text-[#44546f]",
   running: "bg-[#cce0ff] text-[#0055cc]",
   blocked: "bg-[#f8e6a0] text-[#7f5f01]",

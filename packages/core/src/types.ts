@@ -2,6 +2,7 @@ export const TICKET_TYPES = ["fix", "feature", "new_project"] as const;
 export type TicketType = (typeof TICKET_TYPES)[number];
 
 export const TICKET_STATUSES = [
+  "idea",
   "queued",
   "running",
   "blocked",
@@ -155,6 +156,7 @@ export type OpenQuestion = Question & {
 };
 
 export const STATUS_LABELS: Record<TicketStatus, string> = {
+  idea: "Idea",
   queued: "Queued",
   running: "Running",
   blocked: "Blocked",

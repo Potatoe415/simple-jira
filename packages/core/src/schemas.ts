@@ -60,6 +60,8 @@ export const createTicketSchema = z
     blocked_by: z.array(ticketRefSchema).max(20).default([]),
     check_paths: z.array(z.string().trim().regex(/^\/[^\s]*$/, "path: must start with /")).max(10).default([]),
     source: z.enum(["mcp", "dashboard"]).default("dashboard"),
+    // Saved for later: never picked up by the worker until started.
+    idea: z.boolean().default(false),
   })
   .superRefine((value, ctx) => {
     if (value.type === "new_project" && !value.new_project) {
@@ -71,6 +73,21 @@ export const createTicketSchema = z
   });
 
 export type CreateTicketInput = z.input<typeof createTicketSchema>;
+
+// What can be set when an idea is turned into a real task.
+export const startIdeaSchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().min(1).max(20000).optional(),
+  slug: z.string().trim().regex(TASK_SLUG_RE, "slug: lowercase letters, digits and dashes").optional(),
+  goal: z.string().trim().max(4000).optional(),
+  steps: lines.optional(),
+  auto_merge: z.boolean().optional(),
+  priority: prioritySchema.optional(),
+  model: modelSchema.optional(),
+  effort: effortSchema.optional(),
+});
+
+export type StartIdeaInput = z.input<typeof startIdeaSchema>;
 
 export const projectSchema = z.object({
   slug: z.string().trim().regex(SLUG_RE, "slug: lowercase letters, digits and dashes"),

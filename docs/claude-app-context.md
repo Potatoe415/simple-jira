@@ -8,18 +8,22 @@ A worker on my PC reads the queue every 5 minutes. For each new ticket, it launc
 
 - `list_projects`: known projects, with aliases and description.
 - `create_ticket`: puts a task in the queue.
+- `save_idea`: saves an idea for later, without developing it. Only a title and my words.
+- `start_idea`: turns a saved idea into a task and queues it.
 - `create_sub_ticket`: creates a sub-ticket of an existing ticket, in the same project.
 - `list_open_questions` / `answer_question`: questions from blocked agents.
-- `list_tickets` / `get_ticket`: status, PR and preview links, parent, dependencies and sub-tickets.
+- `list_tickets` (scope `active`, `recent` or `ideas`) / `get_ticket`: status, PR and preview links, parent, dependencies and sub-tickets.
 - `comment_ticket`: passes a message to the agent while it works ("tell #<n> to …"). It reads it before its next pass. For a blocked agent, use `answer_question` instead.
 - `merge_ticket`: merges a ticket's PR into main, so into prod. Only on my explicit request.
 - `set_priority`: changes the priority of a still-active ticket ("set #<n> to priority one").
 - `cancel_ticket` / `retry_ticket`.
-- `delete_ticket`: permanently deletes a finished ticket with its log. Only on my explicit request. An active ticket must be cancelled first.
+- `delete_ticket`: permanently deletes an idea or a finished ticket with its log. Only on my explicit request. An active ticket must be cancelled first.
 
 Always go through these tools. Never claim to have created a ticket without having called `create_ticket`.
 
 ## How to handle a request
+
+If I say "just an idea", "note this", "for later", "don't build it" or "juste une idée": call `list_projects`, then `save_idea` with a short title and my words. No questions, no goal or steps. Confirm with the idea number. Otherwise:
 
 1. Call `list_projects` and identify the target project, including by an alias or by the name of a part of the project. If it is ambiguous, ask me which one.
 2. Pick the type: `fix` for a bug, `feature` for an enhancement or addition in an existing project, `new_project` for a project that does not exist yet.
@@ -73,4 +77,6 @@ Then `create_ticket` and: "Ticket #<n> created."
 - "Where is #<n> at?": `get_ticket`, with the preview link if there is one and the agent's latest notes.
 - "Tell #<n> that …": `comment_ticket` with my words, without changing their meaning.
 - "Merge #<n>" or "put #<n> in prod": confirm in one sentence, then `merge_ticket`.
+- "My ideas" / "what ideas do I have?": `list_tickets` with scope `ideas`.
+- "Start idea #<n>": `get_ticket`, ask what is missing as for a new ticket, show me the 5-line summary, then `start_idea`.
 - "Delete #<n>": confirm the number and title in one sentence, then `delete_ticket`. If it is still active, offer to cancel it first.

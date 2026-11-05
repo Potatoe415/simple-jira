@@ -157,6 +157,10 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
         <input type="checkbox" name="auto_merge" defaultChecked className="h-4 w-4 accent-[#22a06b]" />
         Straight to prod (auto-merge as soon as the PR is ready)
       </label>
+      <label className="flex items-center gap-2 text-sm text-ink">
+        <input type="checkbox" name="idea" className="h-4 w-4 accent-brand" />
+        Just an idea (saved for later, not developed until you start it)
+      </label>
       <div className="flex items-center gap-3">
         <button className="btn" disabled={pending}>
           {pending ? "Creating…" : "Queue it"}
