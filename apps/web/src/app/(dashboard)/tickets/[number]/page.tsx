@@ -1,31 +1,58 @@
 import {
   ACTIVE_STATUSES,
   getTicketByNumber,
+  getTicketRelations,
   getWorkerStatus,
   listEvents,
   listQuestions,
+  STATUS_LABELS,
   TYPE_LABELS,
-  type EventKind,
+  type TicketEvent,
+  type TicketRef,
 } from "@simple-jira/core";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cancelTicketAction, retryTicketAction, setPriorityAction } from "@/app/actions";
 import { AnswerForm } from "@/components/answer-form";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { CommentForm } from "@/components/comment-form";
 import { Header } from "@/components/header";
 import { StatusBadge } from "@/components/status-badge";
+import { Timeline } from "@/components/timeline";
 import { TicketActions } from "@/components/ticket-actions";
 import { requireOwner } from "@/lib/auth";
-import { clockTime, timeAgo } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
 import { adminDb } from "@/lib/supabase/admin";
 
-const EVENT_COLORS: Record<EventKind, string> = {
-  status: "text-sky-300",
-  agent: "text-zinc-200",
-  tool: "text-zinc-500",
-  verify: "text-violet-300",
-  error: "text-red-400",
-  info: "text-amber-300",
-};
+const SCREENS_BUCKET = "ticket-screens";
+
+type Screen = { path: string; status: number | null; local: string; storage: string | null };
+
+// Screenshots of the latest browser check: signed URLs (1 h) from the private bucket, else local paths.
+async function latestScreens(db: ReturnType<typeof adminDb>, events: TicketEvent[]) {
+  const event = [...events].reverse().find((e) => e.kind === "browser" && Array.isArray(e.meta?.screens));
+  if (!event) return null;
+  const screens = event.meta!.screens as Screen[];
+  const keys = screens.map((screen) => screen.storage).filter((key): key is string => !!key);
+  const signed = keys.length
+    ? ((await db.storage.from(SCREENS_BUCKET).createSignedUrls(keys, 3600)).data ?? [])
+    : [];
+  const urls = new Map(signed.map((entry) => [entry.path, entry.signedUrl]));
+  return {
+    ok: event.meta!.ok === true,
+    at: event.created_at,
+    screens: screens.map((screen) => ({ ...screen, url: screen.storage ? urls.get(screen.storage) : undefined })),
+  };
+}
+
+function RefLink({ ticket }: { ticket: TicketRef }) {
+  return (
+    <Link href={`/tickets/${ticket.number}`} className="hover:text-sky-300">
+      <span className="text-zinc-500">#{ticket.number}</span> {ticket.title}{" "}
+      <span className="text-xs text-zinc-500">({STATUS_LABELS[ticket.status]})</span>
+    </Link>
+  );
+}
 
 export default async function TicketPage({ params }: { params: Promise<{ number: string }> }) {
   await requireOwner();
@@ -36,17 +63,20 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
   const db = adminDb();
   const ticket = await getTicketByNumber(db, parsed);
   if (!ticket) notFound();
-  const [events, questions, worker] = await Promise.all([
+  const [events, questions, worker, relations] = await Promise.all([
     listEvents(db, ticket.id),
     listQuestions(db, ticket.id),
     getWorkerStatus(db),
+    getTicketRelations(db, ticket),
   ]);
+  const browser = await latestScreens(db, events).catch(() => null);
+  const waiting = relations.blockers.filter((b) => b.status !== "delivered" && b.status !== "merged");
   const isActive = ACTIVE_STATUSES.includes(ticket.status);
   const canRetry = ticket.status === "failed" || ticket.status === "cancelled";
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
-      {isActive && <AutoRefresh seconds={4} />}
+      {ticket.status === "queued" && <AutoRefresh seconds={10} />}
       <Header worker={worker} />
 
       <div className="mb-4 flex flex-wrap items-start gap-3">
@@ -111,6 +141,18 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
             )}
           </dd>
         </div>
+        {(ticket.model || ticket.effort) && (
+          <div>
+            <dt className="label">Modèle</dt>
+            <dd>{[ticket.model, ticket.effort && `effort ${ticket.effort}`].filter(Boolean).join(", ")}</dd>
+          </div>
+        )}
+        {Number(ticket.cost_usd) > 0 && (
+          <div>
+            <dt className="label">Coût</dt>
+            <dd>{Number(ticket.cost_usd).toFixed(2)} $</dd>
+          </div>
+        )}
         {ticket.branch && (
           <div className="col-span-2">
             <dt className="label">Branche</dt>
@@ -128,6 +170,48 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
           </div>
         )}
       </dl>
+
+      <CommentForm ticketId={ticket.id} number={ticket.number} active={isActive} />
+
+      {(relations.parent || relations.children.length > 0 || relations.blockers.length > 0) && (
+        <section className="card mb-4 space-y-3 text-sm">
+          {relations.parent && (
+            <div>
+              <h2 className="label">Ticket parent</h2>
+              <RefLink ticket={relations.parent} />
+            </div>
+          )}
+          {relations.blockers.length > 0 && (
+            <div>
+              <h2 className="label">
+                Dépend de{" "}
+                {waiting.length > 0 && ticket.status === "queued" && (
+                  <span className="normal-case text-amber-300">: en attente de {waiting.length} ticket(s)</span>
+                )}
+              </h2>
+              <ul className="space-y-1">
+                {relations.blockers.map((blocker) => (
+                  <li key={blocker.id}>
+                    <RefLink ticket={blocker} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {relations.children.length > 0 && (
+            <div>
+              <h2 className="label">Sous-tickets</h2>
+              <ul className="space-y-1">
+                {relations.children.map((child) => (
+                  <li key={child.id}>
+                    <RefLink ticket={child} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="card mb-4">
         <h2 className="label">Demande</h2>
@@ -185,23 +269,33 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
         </section>
       )}
 
-      <section className="card">
-        <h2 className="label">Journal</h2>
-        {events.length === 0 ? (
-          <p className="text-sm text-zinc-500">Pas encore d&apos;événement.</p>
-        ) : (
-          <ol className="space-y-1 font-mono text-xs">
-            {events.map((event) => (
-              <li key={event.id} className="flex gap-3">
-                <span className="shrink-0 text-zinc-600">{clockTime(event.created_at)}</span>
-                <span className={`min-w-0 whitespace-pre-wrap break-words ${EVENT_COLORS[event.kind]}`}>
-                  {event.message}
-                </span>
+      {browser && (
+        <section className={`card mb-4 ${browser.ok ? "border-cyan-900/60" : "border-amber-900/60"}`}>
+          <h2 className="label">
+            Test navigateur {browser.ok ? "✓" : "⚠"}{" "}
+            <span className="normal-case text-zinc-500">{timeAgo(browser.at)}</span>
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {browser.screens.map((screen) => (
+              <li key={screen.path} className="text-xs">
+                <div className="mb-1 font-mono text-zinc-400">
+                  {screen.path} · HTTP {screen.status ?? "?"}
+                </div>
+                {screen.url ? (
+                  <a href={screen.url} target="_blank" rel="noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL */}
+                    <img src={screen.url} alt={`Capture de ${screen.path}`} className="rounded border border-zinc-800" />
+                  </a>
+                ) : (
+                  <span className="font-mono text-zinc-500">Capture locale : {screen.local}</span>
+                )}
               </li>
             ))}
-          </ol>
-        )}
-      </section>
+          </ul>
+        </section>
+      )}
+
+      <Timeline number={ticket.number} status={ticket.status} initial={events} />
     </main>
   );
 }

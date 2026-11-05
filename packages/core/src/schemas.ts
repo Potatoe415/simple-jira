@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEFAULT_PRIORITY, TICKET_TYPES, type Priority } from "./types";
+import { DEFAULT_PRIORITY, EFFORTS, TICKET_TYPES, type Priority } from "./types";
 
 export const prioritySchema = z.coerce
   .number()
@@ -24,6 +24,14 @@ export function slugify(text: string, max = 40): string {
   return slug || "task";
 }
 
+export const MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._\[\]-]{0,63}$/;
+
+export const modelSchema = z.string().trim().regex(MODEL_RE, "model: identifiant de modèle (ex. opus, sonnet)");
+export const effortSchema = z.enum(EFFORTS);
+
+// A ticket reference: its uuid or its number (#n).
+export const ticketRefSchema = z.union([z.string().trim().uuid(), z.coerce.number().int().positive()]);
+
 const lines = z
   .array(z.string().trim())
   .transform((items) => items.filter((item) => item.length > 0));
@@ -46,6 +54,11 @@ export const createTicketSchema = z
     auto_merge: z.boolean().default(false),
     priority: prioritySchema.default(DEFAULT_PRIORITY),
     new_project: newProjectSpecSchema.optional(),
+    model: modelSchema.optional(),
+    effort: effortSchema.optional(),
+    parent_id: ticketRefSchema.optional(),
+    blocked_by: z.array(ticketRefSchema).max(20).default([]),
+    check_paths: z.array(z.string().trim().regex(/^\/[^\s]*$/, "chemin : commence par /")).max(10).default([]),
     source: z.enum(["mcp", "dashboard"]).default("dashboard"),
   })
   .superRefine((value, ctx) => {
@@ -72,6 +85,14 @@ export const projectSchema = z.object({
   env_files: lines.default([]),
   agent_instructions: z.string().trim().max(8000).default(""),
   ship_command: z.string().trim().max(1000).default(""),
+  default_model: modelSchema.nullable().optional(),
+  default_effort: effortSchema.nullable().optional(),
+  notify_url: z.httpUrl().max(500).nullable().optional(),
+  browser_check: z.boolean().optional(),
 });
+
+// Columns added by the agent-visibility migration: dropped on retry when the database does not know them yet.
+export const PROJECT_NEW_COLUMNS = ["default_model", "default_effort", "notify_url", "browser_check"] as const;
+export const TICKET_NEW_COLUMNS = ["model", "effort", "parent_id", "blocked_by", "check_paths"] as const;
 
 export type ProjectInput = z.input<typeof projectSchema>;

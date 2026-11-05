@@ -1,5 +1,6 @@
 "use client";
 
+import { EFFORTS } from "@simple-jira/core";
 import { useActionState, useState } from "react";
 import { createTicketAction } from "@/app/actions";
 
@@ -110,6 +111,48 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
           <option value="3">3 : normal</option>
         </select>
       </div>
+      <details className="rounded-md border border-zinc-800 px-3 py-2">
+        <summary className="cursor-pointer text-sm text-zinc-400">Options avancées</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="model">
+              Modèle
+            </label>
+            <input id="model" name="model" className="input" placeholder="Défaut du projet (ex. opus, sonnet)" />
+          </div>
+          <div>
+            <label className="label" htmlFor="effort">
+              Effort
+            </label>
+            <select id="effort" name="effort" className="input" defaultValue="">
+              <option value="">Défaut du projet</option>
+              {EFFORTS.map((effort) => (
+                <option key={effort} value={effort}>
+                  {effort}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="parent">
+              Ticket parent
+            </label>
+            <input id="parent" name="parent" className="input" placeholder="#12" />
+          </div>
+          <div>
+            <label className="label" htmlFor="blocked_by">
+              Dépend de
+            </label>
+            <input id="blocked_by" name="blocked_by" className="input" placeholder="#12, #14 : attend leur PR" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label" htmlFor="check_paths">
+              Pages à tester sur la preview <span className="normal-case text-zinc-500">(une par ligne, défaut /)</span>
+            </label>
+            <textarea id="check_paths" name="check_paths" rows={2} className="input font-mono" placeholder="/projects" />
+          </div>
+        </div>
+      </details>
       <label className="flex items-center gap-2 text-sm text-zinc-300">
         <input type="checkbox" name="auto_merge" className="h-4 w-4 accent-emerald-500" />
         Direct en prod (merge automatique dès que la PR est prête)

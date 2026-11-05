@@ -20,7 +20,26 @@ export const PRIORITIES = [1, 2, 3] as const;
 export type Priority = (typeof PRIORITIES)[number];
 export const DEFAULT_PRIORITY: Priority = 3;
 
-export type EventKind = "status" | "agent" | "tool" | "verify" | "error" | "info";
+export const EVENT_KINDS = [
+  "status",
+  "agent",
+  "tool",
+  "verify",
+  "error",
+  "info",
+  "plan",
+  "message",
+  "comment",
+  "question",
+  "owner_comment",
+  "pr",
+  "check",
+  "browser",
+] as const;
+export type EventKind = (typeof EVENT_KINDS)[number];
+
+export const EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+export type Effort = (typeof EFFORTS)[number];
 
 export interface NewProjectSpec {
   slug: string;
@@ -42,6 +61,11 @@ export interface Project {
   env_files: string[];
   agent_instructions: string;
   ship_command: string;
+  // Added by 20261105090000_agent_visibility.sql: undefined until the migration is applied.
+  default_model?: string | null;
+  default_effort?: Effort | null;
+  notify_url?: string | null;
+  browser_check?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -72,6 +96,13 @@ export interface Ticket {
   error: string | null;
   verify_attempts: number;
   cost_usd: number;
+  // Added by 20261105090000_agent_visibility.sql: undefined until the migration is applied.
+  model?: string | null;
+  effort?: Effort | null;
+  parent_id?: string | null;
+  blocked_by?: string[] | null;
+  check_paths?: string[];
+  comment_cursor?: number;
   created_at: string;
   updated_at: string;
   started_at: string | null;
@@ -94,8 +125,19 @@ export interface TicketEvent {
   ticket_id: string;
   kind: EventKind;
   message: string;
+  meta?: Record<string, unknown> | null;
   created_at: string;
 }
+
+export interface ProjectMemory {
+  id: string;
+  project_id: string;
+  key: string;
+  body: string;
+  updated_at: string;
+}
+
+export type TicketRef = Pick<Ticket, "id" | "number" | "title" | "status">;
 
 export interface WorkerStatus {
   id: string;

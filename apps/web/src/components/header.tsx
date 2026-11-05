@@ -6,10 +6,11 @@ import { timeAgo } from "@/lib/format";
 export function Header({ worker }: { worker: WorkerStatus | null }) {
   const online = isWorkerOnline(worker);
   return (
-    <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-zinc-800 pb-4">
+    <header className="mb-6 flex flex-wrap items-center gap-3 border-b border-zinc-800 pb-4 pl-12 lg:pl-0">
       <Link href="/" className="text-lg font-semibold tracking-tight">
         simple-jira
       </Link>
+      <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-xs text-zinc-400">v0.01</span>
       <span
         className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${
           online ? "bg-emerald-950 text-emerald-300" : "bg-zinc-800 text-zinc-400"
