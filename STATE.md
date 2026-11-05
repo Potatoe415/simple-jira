@@ -3,15 +3,17 @@
 Replace on every update. Max 40 lines. History lives in git and `docs/decisions/`.
 
 Status: Aligned with bootstrap v10.1 on 2026-11-05 (branch `chore/align-bootstrap-v10-1`).
-Focus: "Context" download link in the top bar (`/api/context`, owner only) serving `docs/claude-app-context.md`. Changes are committed and pushed to `main` automatically (test env).
+Focus: Straight to prod by default (MCP `auto_merge` default true, web checkbox checked) and post-merge cleanup of the worktree and local branch by the worker. Changes are committed and pushed to `main` automatically (test env).
 Level: L1
 
 Context:
-- Working_On: `apps/web/src/app/api/context/route.ts`, `apps/web/next.config.ts` (`outputFileTracingIncludes`), `components/header.tsx`
-- Recent: ticket deletion (row button 7c6d134, MCP `delete_ticket` 9ed22ac)
+- Working_On: `apps/worker/src/followup.ts` (`cleanupMerged`), `apps/web/src/app/api/mcp/[token]/route.ts`, `docs/claude-app-context.md`, `apps/web/src/components/ticket-form.tsx`
+- Core `createTicketSchema` still defaults `auto_merge` to false; both entry points pass it explicitly
+- Recent: Context download link (9fbbcea), ticket deletion (7c6d134, 9ed22ac)
 - Relevant_Decisions: 0001
 
 Next:
+- Restart the worker so the post-merge cleanup runs; watch the next merged ticket's log for "Cleaned up".
 - Check on the deployed app that the Context link downloads the file (Vercel file tracing), and the delete button in the browser.
 - User confirms or corrects every `(inferred — confirm)` marker.
 - Extend `pnpm check` with lint, tests, and dependency audit (BACKLOG).

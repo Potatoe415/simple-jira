@@ -154,7 +154,7 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
         </div>
       </details>
       <label className="flex items-center gap-2 text-sm text-ink">
-        <input type="checkbox" name="auto_merge" className="h-4 w-4 accent-[#22a06b]" />
+        <input type="checkbox" name="auto_merge" defaultChecked className="h-4 w-4 accent-[#22a06b]" />
         Straight to prod (auto-merge as soon as the PR is ready)
       </label>
       <div className="flex items-center gap-3">

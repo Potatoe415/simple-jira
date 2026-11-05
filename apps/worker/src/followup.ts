@@ -7,7 +7,7 @@ import { gh, git, resolveGithubToken, run } from "./exec";
 import { createLogger, type TicketLogger } from "./logger";
 import { notify } from "./notify";
 import { conflictStep, renderTask, reopenForConflict } from "./task-file";
-import { reattachWorktree, taskPath } from "./workspace";
+import { reattachWorktree, removeWorktree, taskPath } from "./workspace";
 
 async function githubEnv(): Promise<Record<string, string> | undefined> {
   const token = await resolveGithubToken();
@@ -136,6 +136,22 @@ async function handleConflict(ticket: Ticket, log: TicketLogger): Promise<"retry
   return "requeued";
 }
 
+// Once in prod, the worktree folder and the local branch are no longer needed: remove both.
+// A failure is logged and leaves things in place for the cleanup script; it never undoes the merge.
+async function cleanupMerged(ticket: Ticket, log: TicketLogger) {
+  if (!ticket.project_id || !ticket.branch) return;
+  try {
+    const project = await getProject(db, ticket.project_id);
+    if (ticket.worktree_path && existsSync(ticket.worktree_path)) await removeWorktree(project, ticket.worktree_path);
+    await git(["worktree", "prune"], project.local_path);
+    await git(["branch", "-D", ticket.branch], project.local_path).catch(() => undefined);
+    await updateTicket(db, ticket.id, { worktree_path: null });
+    log.status(`Cleaned up: worktree ${ticket.worktree_path ?? "(none)"} and local branch ${ticket.branch} removed`);
+  } catch (error) {
+    log.error(`Cleanup after merge failed, worktree kept: ${(error as Error).message}`);
+  }
+}
+
 async function runMerges() {
   const { data, error } = await db
     .from("tickets")
@@ -158,6 +174,7 @@ async function runMerges() {
           await updateTicket(db, ticket.id, { status: "merged", merged_at: new Date().toISOString() });
           log.transition("merged", "merged into main, Vercel deploys to prod");
           await notify("merged", ticket, await getProject(db, ticket.project_id!).catch(() => null));
+          await cleanupMerged(await getTicket(db, ticket.id), log);
           break;
         }
         if (!/conflict|not mergeable/i.test(result.output) || attempt > 0) {

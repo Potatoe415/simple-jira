@@ -37,7 +37,7 @@ const INSTRUCTIONS = `simple-jira turns dictated requests into tickets that Clau
 - steps: 3 to 10 small, concrete, verifiable steps, in order, in English. Do not include reading the project docs, the verify command or commit/push: the worker adds them.
 - slug: 2 to 4 words in English kebab-case, used as the branch name (feat/<slug>).
 - priority: 3 by default. 1 if the user says "priority one", "urgent", "first"; 2 if they say "priority two". Queued tickets are picked by priority (1 first), then by age; a ticket already running is not interrupted. For an existing ticket, use set_priority.
-- auto_merge: true only if the user explicitly says "straight to prod", "ship to prod", "merge directly" or equivalent. Otherwise false: the PR waits for review.
+- auto_merge: true by default: the PR is merged to prod as soon as it is ready. false only if the user explicitly says "don't push to prod", "PR only", "I want to review it", "ne pousse pas en prod" or equivalent: the PR then waits for review.
 - When the user asks whether there are questions or news, call list_open_questions then list_tickets.
 - To answer an agent's question, call answer_question with the user's answer, without rephrasing it to the point of changing its meaning.
 - To pass a clarification to an agent that is working (not blocked), call comment_ticket: it reads it before its next pass.
@@ -110,8 +110,8 @@ const handler = createMcpHandler(
             .describe("short English kebab-case, branch name"),
           auto_merge: z
             .boolean()
-            .default(false)
-            .describe("true only if the user explicitly says to go straight to prod"),
+            .default(true)
+            .describe("true by default (straight to prod); false only if the user explicitly says not to push to prod"),
           priority: z
             .number()
             .int()
@@ -172,7 +172,7 @@ const handler = createMcpHandler(
           goal: z.string().min(1),
           steps: z.array(z.string().min(1)).min(1).max(15),
           slug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,47}$/),
-          auto_merge: z.boolean().default(false),
+          auto_merge: z.boolean().default(true),
           priority: z.number().int().min(1).max(3).default(3),
           model: z
             .string()
