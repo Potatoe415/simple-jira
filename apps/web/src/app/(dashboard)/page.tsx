@@ -1,20 +1,17 @@
 import {
   ACTIVE_STATUSES,
   FINAL_STATUSES,
-  listOpenQuestions,
   listProjects,
   listTickets,
   type TicketWithProject,
 } from "@simple-jira/core";
 import Link from "next/link";
-import { AnswerForm } from "@/components/answer-form";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { TicketFilters } from "@/components/ticket-filters";
 import { TicketForm } from "@/components/ticket-form";
 import { TicketRow } from "@/components/ticket-row";
 import { requireOwner } from "@/lib/auth";
 import { effectiveStatuses, hasFilters, parseFilters, VIEWS } from "@/lib/filters";
-import { timeAgo } from "@/lib/format";
 import { adminDb } from "@/lib/supabase/admin";
 
 const FILTERED_LIMIT = 200;
@@ -61,7 +58,7 @@ export default async function DashboardPage({
   const db = adminDb();
   const filters = parseFilters(await searchParams);
   const filtered = hasFilters(filters);
-  const [questions, projects] = await Promise.all([listOpenQuestions(db), listProjects(db)]);
+  const projects = await listProjects(db);
   const projectId = filters.project ? (projects.find((p) => p.slug === filters.project)?.id ?? "none") : undefined;
 
   const [results, active, recent] = await Promise.all([
@@ -109,35 +106,6 @@ export default async function DashboardPage({
         />
       ) : (
         <>
-          <section className="mb-6 rounded-lg border border-[#f8e6a0] bg-warning-subtle p-2">
-            <h2 className="flex items-center gap-2 px-2 py-2">
-              <span className="section-title">Agent questions</span>
-              {questions.length > 0 && (
-                <span className="rounded-full bg-[#f8e6a0] px-1.5 text-xs font-semibold text-[#7f5f01]">
-                  {questions.length}
-                </span>
-              )}
-            </h2>
-            {questions.length === 0 ? (
-              <p className="px-2 pb-2 text-ink-subtle">No blocked agents.</p>
-            ) : (
-              <ul className="space-y-2">
-                {questions.map((question) => (
-                  <li key={question.id} className="card">
-                    <div className="mb-1 text-xs text-ink-subtle">
-                      <Link href={`/tickets/${question.ticket.number}`} className="text-brand hover:underline">
-                        #{question.ticket.number} · {question.ticket.project?.name ?? "?"} · {question.ticket.title}
-                      </Link>{" "}
-                      · {timeAgo(question.created_at)}
-                    </div>
-                    <p className="whitespace-pre-wrap">{question.question}</p>
-                    <AnswerForm questionId={question.id} options={question.options} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
           <Panel
             title="In progress and queued"
             meta={`(${working.length} tickets)`}

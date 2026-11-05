@@ -1,4 +1,11 @@
-import { ACTIVE_STATUSES, getTicketCounts, getWorkerStatus, isWorkerOnline, listProjects } from "@simple-jira/core";
+import {
+  ACTIVE_STATUSES,
+  getTicketCounts,
+  getWorkerStatus,
+  isWorkerOnline,
+  listOpenQuestions,
+  listProjects,
+} from "@simple-jira/core";
 import { Suspense } from "react";
 import { Header } from "@/components/header";
 import { SidePanel, type PanelSection } from "@/components/side-panel";
@@ -16,7 +23,12 @@ const VIEW_TONES: Partial<Record<View, "amber" | "red" | "teal" | "emerald">> = 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   await requireOwner();
   const db = adminDb();
-  const [counts, projects, worker] = await Promise.all([getTicketCounts(db), listProjects(db), getWorkerStatus(db)]);
+  const [counts, projects, worker, questions] = await Promise.all([
+    getTicketCounts(db),
+    listProjects(db),
+    getWorkerStatus(db),
+    listOpenQuestions(db),
+  ]);
   const online = isWorkerOnline(worker);
 
   const sections: PanelSection[] = [
@@ -56,7 +68,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <>
-      <Header />
+      <Header questions={questions} />
       <div className="lg:flex">
         <Suspense>
           <SidePanel

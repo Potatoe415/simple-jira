@@ -1,10 +1,13 @@
+import type { OpenQuestion } from "@simple-jira/core";
 import Link from "next/link";
 import { signOutAction } from "@/app/actions";
+import { filtersHref } from "@/lib/filters";
+import { AlertsMenu } from "./alerts-menu";
 
 const navLink = "rounded-[3px] px-2 py-1.5 text-sm font-medium text-ink-subtle hover:bg-tint hover:text-ink";
 
 // Global top bar, shown above the side panel on every dashboard page.
-export function Header() {
+export function Header({ questions }: { questions: OpenQuestion[] }) {
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-line bg-white pl-14 pr-4 lg:pl-4">
       <Link href="/" className="mr-1 flex items-center gap-2 text-ink sm:mr-4" aria-label="simple-jira home">
@@ -43,6 +46,7 @@ export function Header() {
         </a>
       </nav>
       <div className="ml-auto flex items-center gap-3">
+        <AlertsMenu questions={questions} blockedHref={filtersHref({ view: "questions" })} />
         <span className="hidden rounded-[3px] bg-tint px-1.5 py-0.5 font-mono text-xs text-ink-subtle sm:inline">v0.01</span>
         <form action={signOutAction}>
           <button className={navLink}>Sign out</button>

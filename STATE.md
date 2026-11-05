@@ -3,13 +3,12 @@
 Replace on every update. Max 40 lines. History lives in git and `docs/decisions/`.
 
 Status: Aligned with bootstrap v10.1 on 2026-11-05 (branch `chore/align-bootstrap-v10-1`).
-Focus: Straight to prod by default (MCP `auto_merge` default true, web checkbox checked) and post-merge cleanup of the worktree and local branch by the worker. Changes are committed and pushed to `main` automatically (test env).
+Focus: Agent questions moved from the dashboard block to a bell in the top bar (count badge + dropdown with answer forms). Changes are committed and pushed to `main` automatically (test env).
 Level: L1
 
 Context:
-- Working_On: `apps/worker/src/followup.ts` (`cleanupMerged`), `apps/web/src/app/api/mcp/[token]/route.ts`, `docs/claude-app-context.md`, `apps/web/src/components/ticket-form.tsx`
-- Core `createTicketSchema` still defaults `auto_merge` to false; both entry points pass it explicitly
-- Recent: Context download link (9fbbcea), ticket deletion (7c6d134, 9ed22ac)
+- Working_On: `apps/web/src/components/alerts-menu.tsx`, `components/header.tsx`, `app/(dashboard)/layout.tsx` (loads open questions), `app/(dashboard)/page.tsx`
+- Recent: straight to prod by default + post-merge cleanup (2166a2a), Context download link (9fbbcea), ticket deletion (7c6d134, 9ed22ac)
 - Relevant_Decisions: 0001
 
 Next:
