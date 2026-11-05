@@ -43,14 +43,14 @@ export function TicketActions(props: Props) {
           rel="noreferrer"
           title="View preview"
           aria-label="View preview"
-          className={`${iconButton} border-sky-800 text-sky-300 hover:bg-sky-950`}
+          className={`${iconButton} border-brand/40 text-brand hover:bg-brand-subtle`}
         >
           <EyeIcon />
           <span className="hidden sm:inline">Preview</span>
         </a>
       ) : (
         canMerge && (
-          <span className={`${iconButton} border-zinc-800 text-zinc-500`} title="Preview deploying">
+          <span className={`${iconButton} border-line text-ink-subtlest`} title="Preview deploying">
             <EyeIcon />
             <span className="hidden sm:inline">…</span>
           </span>
@@ -62,7 +62,7 @@ export function TicketActions(props: Props) {
           disabled={merging}
           title="Merge to prod"
           aria-label="Merge to prod"
-          className={`${iconButton} border-emerald-800 text-emerald-300 hover:bg-emerald-950`}
+          className={`${iconButton} border-success/40 text-success hover:bg-success-subtle`}
           onClick={() => {
             if (!confirm(`Merge ticket #${props.number} into main? It will ship to prod.`)) return;
             const form = new FormData();

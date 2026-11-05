@@ -26,7 +26,7 @@ function Lines(props: { name: string; label: string; value?: string[]; placehold
   return (
     <div>
       <label className="label" htmlFor={props.name}>
-        {props.label} <span className="normal-case text-zinc-500">(one per line)</span>
+        {props.label} <span className="normal-case text-ink-subtlest">(one per line)</span>
       </label>
       <textarea
         id={props.name}
@@ -94,12 +94,12 @@ export function ProjectForm({ project }: { project?: Project }) {
         </div>
         <Field name="notify_url" label="Notifications (URL ntfy)" value={project?.notify_url ?? ""} placeholder="Worker NOTIFY_URL" />
       </div>
-      <label className="flex items-center gap-2 text-sm text-zinc-300">
+      <label className="flex items-center gap-2 text-sm text-ink">
         <input
           type="checkbox"
           name="browser_check"
           defaultChecked={project?.browser_check !== false}
-          className="h-4 w-4 accent-sky-500"
+          className="h-4 w-4 accent-brand"
         />
         Browser test on the preview (screenshots and console errors)
       </label>
@@ -119,8 +119,8 @@ export function ProjectForm({ project }: { project?: Project }) {
         <button className="btn" disabled={pending}>
           {pending ? "Saving…" : project ? "Save" : "Add project"}
         </button>
-        {state.ok && <span className="text-sm text-emerald-400">Saved</span>}
-        {state.error && <span className="whitespace-pre-wrap text-sm text-red-400">{state.error}</span>}
+        {state.ok && <span className="text-sm text-success">Saved</span>}
+        {state.error && <span className="whitespace-pre-wrap text-sm text-danger">{state.error}</span>}
       </div>
     </form>
   );

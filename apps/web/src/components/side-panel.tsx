@@ -17,10 +17,10 @@ export interface PanelSection {
 }
 
 const TONES = {
-  amber: "bg-amber-900 text-amber-200",
-  red: "bg-red-900 text-red-200",
-  teal: "bg-teal-900 text-teal-200",
-  emerald: "bg-emerald-900 text-emerald-200",
+  amber: "bg-[#f8e6a0] text-[#7f5f01]",
+  red: "bg-[#ffd5d2] text-[#ae2e24]",
+  teal: "bg-[#c6edfb] text-[#206a83]",
+  emerald: "bg-[#baf3db] text-[#216e4e]",
 };
 
 // Active when the path matches and every query param of the link is in the current URL (and nothing else for "/").
@@ -55,15 +55,19 @@ export function SidePanel({
   };
 
   const nav = (
-    <nav className="flex h-full flex-col gap-5 overflow-y-auto p-4 text-sm">
-      <div className="flex items-center gap-2">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
-          simple-jira
+    <nav className="flex h-full flex-col gap-5 overflow-y-auto px-3 py-4 text-sm">
+      <div className="flex items-center gap-3 px-1">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#6e5dc6] text-base text-white" aria-hidden>
+          ◆
+        </span>
+        <Link href="/" className="min-w-0 flex-1 leading-tight">
+          <span className="block truncate font-semibold text-ink">simple-jira</span>
+          <span className="block text-xs text-ink-subtle">Agent control center</span>
         </Link>
         <button
           type="button"
           onClick={toggleCollapsed}
-          className="ml-auto hidden rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 lg:block"
+          className="hidden rounded-[3px] p-1 text-ink-subtle hover:bg-tint hover:text-ink lg:block"
           title="Collapse panel"
           aria-label="Collapse panel"
         >
@@ -72,24 +76,24 @@ export function SidePanel({
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="ml-auto rounded p-1 text-zinc-400 hover:bg-zinc-800 lg:hidden"
+          className="rounded-[3px] p-1 text-ink-subtle hover:bg-tint lg:hidden"
           aria-label="Close menu"
         >
           ✕
         </button>
       </div>
       <span
-        className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2 py-0.5 text-xs ${
-          worker.online ? "bg-emerald-950 text-emerald-300" : "bg-zinc-800 text-zinc-400"
+        className={`mx-1 inline-flex w-fit items-center gap-1.5 rounded-[3px] px-2 py-0.5 text-xs font-medium ${
+          worker.online ? "bg-success-subtle text-success" : "bg-tint text-ink-subtle"
         }`}
         title={worker.title}
       >
-        <span className={`h-2 w-2 rounded-full ${worker.online ? "bg-emerald-400" : "bg-zinc-500"}`} />
+        <span className={`h-2 w-2 rounded-full ${worker.online ? "bg-[#22a06b]" : "bg-line-bold"}`} />
         {worker.label}
       </span>
       {sections.map((section) => (
         <div key={section.title}>
-          <h2 className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500">{section.title}</h2>
+          <h2 className="mb-1 px-2 text-[11px] font-bold uppercase tracking-wide text-ink-subtle">{section.title}</h2>
           <ul className="space-y-0.5">
             {section.links.map((link) => {
               const active = isActive(link.href, pathname, search);
@@ -98,15 +102,17 @@ export function SidePanel({
                   <Link
                     href={link.href}
                     aria-current={active ? "page" : undefined}
-                    className={`flex items-center gap-2 rounded-md px-2 py-1.5 ${
-                      active ? "bg-zinc-800 text-white" : "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
+                    className={`relative flex items-center gap-2 rounded-[3px] px-3 py-2 font-medium ${
+                      active
+                        ? "bg-brand-subtle text-brand before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r before:bg-brand"
+                        : "text-ink-subtle hover:bg-tint hover:text-ink"
                     }`}
                   >
                     <span className="min-w-0 flex-1 truncate">{link.label}</span>
                     {link.count !== undefined && link.count > 0 && (
                       <span
-                        className={`rounded px-1.5 text-xs tabular-nums ${
-                          link.tone ? TONES[link.tone] : "bg-zinc-800 text-zinc-400"
+                        className={`rounded-full px-1.5 text-xs font-semibold tabular-nums ${
+                          link.tone ? TONES[link.tone] : "bg-tint text-ink-subtle"
                         }`}
                       >
                         {link.count}
@@ -127,7 +133,7 @@ export function SidePanel({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed left-3 top-3 z-30 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-sm lg:hidden"
+        className="fixed left-3 top-3 z-30 rounded-[3px] bg-tint px-2.5 py-1 text-sm text-ink hover:bg-tint-hover lg:hidden"
         aria-label="Open menu"
       >
         ☰
@@ -136,7 +142,7 @@ export function SidePanel({
         <button
           type="button"
           onClick={toggleCollapsed}
-          className="fixed left-2 top-3 z-30 hidden rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-400 hover:text-zinc-100 lg:block"
+          className="fixed bottom-4 left-2 z-30 hidden rounded-full border border-line bg-white px-2 py-1 text-sm text-ink-subtle shadow hover:text-brand lg:block"
           title="Expand panel"
           aria-label="Expand panel"
         >
@@ -144,10 +150,10 @@ export function SidePanel({
         </button>
       )}
       {open && (
-        <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setOpen(false)} aria-hidden />
+        <div className="fixed inset-0 z-40 bg-[#091e427d] lg:hidden" onClick={() => setOpen(false)} aria-hidden />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-zinc-800 bg-zinc-950 transition-transform lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:shrink-0 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-60 border-r border-line bg-white transition-transform lg:sticky lg:top-14 lg:z-auto lg:h-[calc(100vh-3.5rem)] lg:shrink-0 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         } ${collapsed ? "lg:hidden" : ""}`}
       >

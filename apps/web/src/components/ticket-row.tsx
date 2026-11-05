@@ -1,23 +1,24 @@
-import { TYPE_LABELS, type TicketWithProject } from "@simple-jira/core";
+import type { TicketWithProject } from "@simple-jira/core";
 import Link from "next/link";
 import { timeAgo } from "@/lib/format";
-import { PriorityBadge, StatusBadge } from "./status-badge";
+import { PriorityIcon, ProjectLabel, StatusBadge, TypeIcon } from "./status-badge";
 import { TicketActions } from "./ticket-actions";
 
 export function TicketRow({ ticket }: { ticket: TicketWithProject }) {
   const project = ticket.project?.name ?? ticket.new_project?.name ?? "?";
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-800/70 py-2.5 last:border-0">
-      <StatusBadge status={ticket.status} />
-      <PriorityBadge priority={ticket.priority} />
-      <Link href={`/tickets/${ticket.number}`} className="min-w-0 flex-1 truncate hover:text-sky-300">
-        <span className="text-zinc-500">#{ticket.number}</span> {ticket.title}
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 hover:bg-sunken">
+      <TypeIcon type={ticket.type} />
+      <Link href={`/tickets/${ticket.number}`} className="min-w-0 flex-1 truncate text-ink hover:text-brand hover:underline">
+        <span className="text-ink-subtle">#{ticket.number}</span>
+        <span className="ml-2">{ticket.title}</span>
       </Link>
-      <span className="text-xs text-zinc-500">
-        {project} · {TYPE_LABELS[ticket.type]} · {timeAgo(ticket.updated_at)}
-      </span>
+      <ProjectLabel name={project} />
+      <StatusBadge status={ticket.status} />
+      <span className="hidden w-24 text-right text-xs text-ink-subtlest sm:inline">{timeAgo(ticket.updated_at)}</span>
+      <PriorityIcon priority={ticket.priority} />
       {ticket.pr_url && (
-        <a href={ticket.pr_url} target="_blank" rel="noreferrer" className="text-xs text-zinc-400 hover:underline">
+        <a href={ticket.pr_url} target="_blank" rel="noreferrer" className="text-xs text-brand hover:underline">
           PR ↗
         </a>
       )}

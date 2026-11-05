@@ -97,7 +97,7 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
       </div>
       <div>
         <label className="label" htmlFor="steps">
-          Steps <span className="normal-case text-zinc-500">(one per line, optional)</span>
+          Steps <span className="normal-case text-ink-subtlest">(one per line, optional)</span>
         </label>
         <textarea id="steps" name="steps" rows={4} className="input font-mono" />
       </div>
@@ -111,8 +111,8 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
           <option value="3">3: normal</option>
         </select>
       </div>
-      <details className="rounded-md border border-zinc-800 px-3 py-2">
-        <summary className="cursor-pointer text-sm text-zinc-400">Advanced options</summary>
+      <details className="rounded-md border border-line px-3 py-2">
+        <summary className="cursor-pointer text-sm text-ink-subtle">Advanced options</summary>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="model">
@@ -147,21 +147,21 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
           </div>
           <div className="sm:col-span-2">
             <label className="label" htmlFor="check_paths">
-              Pages to test on the preview <span className="normal-case text-zinc-500">(one per line, default /)</span>
+              Pages to test on the preview <span className="normal-case text-ink-subtlest">(one per line, default /)</span>
             </label>
             <textarea id="check_paths" name="check_paths" rows={2} className="input font-mono" placeholder="/projects" />
           </div>
         </div>
       </details>
-      <label className="flex items-center gap-2 text-sm text-zinc-300">
-        <input type="checkbox" name="auto_merge" className="h-4 w-4 accent-emerald-500" />
+      <label className="flex items-center gap-2 text-sm text-ink">
+        <input type="checkbox" name="auto_merge" className="h-4 w-4 accent-[#22a06b]" />
         Straight to prod (auto-merge as soon as the PR is ready)
       </label>
       <div className="flex items-center gap-3">
         <button className="btn" disabled={pending}>
           {pending ? "Creating…" : "Queue it"}
         </button>
-        {state.error && <span className="whitespace-pre-wrap text-sm text-red-400">{state.error}</span>}
+        {state.error && <span className="whitespace-pre-wrap text-sm text-danger">{state.error}</span>}
       </div>
     </form>
   );

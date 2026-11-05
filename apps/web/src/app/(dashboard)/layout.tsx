@@ -1,5 +1,6 @@
 import { ACTIVE_STATUSES, getTicketCounts, getWorkerStatus, isWorkerOnline, listProjects } from "@simple-jira/core";
 import { Suspense } from "react";
+import { Header } from "@/components/header";
 import { SidePanel, type PanelSection } from "@/components/side-panel";
 import { requireOwner } from "@/lib/auth";
 import { filtersHref, VIEWS, type View } from "@/lib/filters";
@@ -54,18 +55,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
   ];
 
   return (
-    <div className="lg:flex">
-      <Suspense>
-        <SidePanel
-          sections={sections}
-          worker={{
-            online,
-            label: online ? "Worker online" : "Worker offline",
-            title: worker ? `${worker.hostname}, seen ${timeAgo(worker.last_seen_at)}` : "never seen",
-          }}
-        />
-      </Suspense>
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
+    <>
+      <Header />
+      <div className="lg:flex">
+        <Suspense>
+          <SidePanel
+            sections={sections}
+            worker={{
+              online,
+              label: online ? "Worker online" : "Worker offline",
+              title: worker ? `${worker.hostname}, seen ${timeAgo(worker.last_seen_at)}` : "never seen",
+            }}
+          />
+        </Suspense>
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
+    </>
   );
 }

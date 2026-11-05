@@ -38,7 +38,7 @@ export function AnswerForm({ questionId, options }: { questionId: string; option
         <button className="btn" disabled={pending}>
           {pending ? "Sending…" : "Answer and unblock"}
         </button>
-        {state.error && <span className="text-sm text-red-400">{state.error}</span>}
+        {state.error && <span className="text-sm text-danger">{state.error}</span>}
       </div>
     </form>
   );

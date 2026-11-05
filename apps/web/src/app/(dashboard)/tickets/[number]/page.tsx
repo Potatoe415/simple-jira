@@ -2,7 +2,6 @@ import {
   ACTIVE_STATUSES,
   getTicketByNumber,
   getTicketRelations,
-  getWorkerStatus,
   listEvents,
   listQuestions,
   STATUS_LABELS,
@@ -16,7 +15,6 @@ import { cancelTicketAction, retryTicketAction, setPriorityAction } from "@/app/
 import { AnswerForm } from "@/components/answer-form";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { CommentForm } from "@/components/comment-form";
-import { Header } from "@/components/header";
 import { StatusBadge } from "@/components/status-badge";
 import { Timeline } from "@/components/timeline";
 import { TicketActions } from "@/components/ticket-actions";
@@ -47,9 +45,9 @@ async function latestScreens(db: ReturnType<typeof adminDb>, events: TicketEvent
 
 function RefLink({ ticket }: { ticket: TicketRef }) {
   return (
-    <Link href={`/tickets/${ticket.number}`} className="hover:text-sky-300">
-      <span className="text-zinc-500">#{ticket.number}</span> {ticket.title}{" "}
-      <span className="text-xs text-zinc-500">({STATUS_LABELS[ticket.status]})</span>
+    <Link href={`/tickets/${ticket.number}`} className="hover:text-brand hover:underline">
+      <span className="text-ink-subtlest">#{ticket.number}</span> {ticket.title}{" "}
+      <span className="text-xs text-ink-subtlest">({STATUS_LABELS[ticket.status]})</span>
     </Link>
   );
 }
@@ -63,10 +61,9 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
   const db = adminDb();
   const ticket = await getTicketByNumber(db, parsed);
   if (!ticket) notFound();
-  const [events, questions, worker, relations] = await Promise.all([
+  const [events, questions, relations] = await Promise.all([
     listEvents(db, ticket.id),
     listQuestions(db, ticket.id),
-    getWorkerStatus(db),
     getTicketRelations(db, ticket),
   ]);
   const browser = await latestScreens(db, events).catch(() => null);
@@ -75,14 +72,19 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
   const canRetry = ticket.status === "failed" || ticket.status === "cancelled";
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6">
+    <main className="mx-auto max-w-5xl px-6 py-6">
       {ticket.status === "queued" && <AutoRefresh seconds={10} />}
-      <Header worker={worker} />
+      <nav aria-label="Breadcrumb" className="mb-2 text-sm text-ink-subtle">
+        <Link href="/" className="hover:text-brand hover:underline">
+          Dashboard
+        </Link>{" "}
+        / {ticket.project?.name ?? ticket.new_project?.name ?? "?"} / #{ticket.number}
+      </nav>
 
       <div className="mb-4 flex flex-wrap items-start gap-3">
         <StatusBadge status={ticket.status} />
-        <h1 className="min-w-0 flex-1 text-xl font-semibold">
-          <span className="text-zinc-500">#{ticket.number}</span> {ticket.title}
+        <h1 className="min-w-0 flex-1 text-2xl font-medium text-ink">
+          <span className="text-ink-subtlest">#{ticket.number}</span> {ticket.title}
         </h1>
         <TicketActions
           id={ticket.id}
@@ -163,7 +165,7 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
           <div className="col-span-2">
             <dt className="label">Pull request</dt>
             <dd>
-              <a href={ticket.pr_url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
+              <a href={ticket.pr_url} target="_blank" rel="noreferrer" className="text-success hover:underline">
                 {ticket.pr_url.replace("https://github.com/", "")} ↗
               </a>
             </dd>
@@ -186,7 +188,7 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
               <h2 className="label">
                 Depends on{" "}
                 {waiting.length > 0 && ticket.status === "queued" && (
-                  <span className="normal-case text-amber-300">: waiting on {waiting.length} ticket(s)</span>
+                  <span className="normal-case text-warning">: waiting on {waiting.length} ticket(s)</span>
                 )}
               </h2>
               <ul className="space-y-1">
@@ -233,19 +235,19 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
           </>
         )}
         {ticket.worktree_path && (
-          <p className="mt-4 font-mono text-xs text-zinc-500">Worktree: {ticket.worktree_path}</p>
+          <p className="mt-4 font-mono text-xs text-ink-subtlest">Worktree: {ticket.worktree_path}</p>
         )}
       </section>
 
       {ticket.error && (
-        <section className="card mb-4 border-red-900/70">
-          <h2 className="label text-red-400">Error</h2>
-          <pre className="whitespace-pre-wrap font-mono text-xs text-red-300">{ticket.error}</pre>
+        <section className="card mb-4 border-[#ffd5d2] bg-danger-subtle">
+          <h2 className="label text-danger">Error</h2>
+          <pre className="whitespace-pre-wrap font-mono text-xs text-danger">{ticket.error}</pre>
         </section>
       )}
 
       {ticket.summary && (
-        <section className="card mb-4 border-emerald-900/60">
+        <section className="card mb-4 border-[#baf3db] bg-success-subtle">
           <h2 className="label">Agent summary</h2>
           <p className="whitespace-pre-wrap text-sm">{ticket.summary}</p>
         </section>
@@ -259,7 +261,7 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
               <li key={question.id}>
                 <p className="whitespace-pre-wrap text-sm">{question.question}</p>
                 {question.answer ? (
-                  <p className="mt-1 text-sm text-emerald-300">→ {question.answer}</p>
+                  <p className="mt-1 text-sm text-success">→ {question.answer}</p>
                 ) : (
                   <AnswerForm questionId={question.id} options={question.options} />
                 )}
@@ -270,24 +272,24 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
       )}
 
       {browser && (
-        <section className={`card mb-4 ${browser.ok ? "border-cyan-900/60" : "border-amber-900/60"}`}>
+        <section className={`card mb-4 ${browser.ok ? "border-[#c6edfb] bg-info-subtle" : "border-[#f8e6a0] bg-warning-subtle"}`}>
           <h2 className="label">
             Browser test {browser.ok ? "✓" : "⚠"}{" "}
-            <span className="normal-case text-zinc-500">{timeAgo(browser.at)}</span>
+            <span className="normal-case text-ink-subtlest">{timeAgo(browser.at)}</span>
           </h2>
           <ul className="grid gap-3 sm:grid-cols-2">
             {browser.screens.map((screen) => (
               <li key={screen.path} className="text-xs">
-                <div className="mb-1 font-mono text-zinc-400">
+                <div className="mb-1 font-mono text-ink-subtle">
                   {screen.path} · HTTP {screen.status ?? "?"}
                 </div>
                 {screen.url ? (
                   <a href={screen.url} target="_blank" rel="noreferrer">
                     {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL */}
-                    <img src={screen.url} alt={`Screenshot of ${screen.path}`} className="rounded border border-zinc-800" />
+                    <img src={screen.url} alt={`Screenshot of ${screen.path}`} className="rounded border border-line" />
                   </a>
                 ) : (
-                  <span className="font-mono text-zinc-500">Local screenshot: {screen.local}</span>
+                  <span className="font-mono text-ink-subtlest">Local screenshot: {screen.local}</span>
                 )}
               </li>
             ))}

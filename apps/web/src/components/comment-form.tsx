@@ -35,8 +35,8 @@ export function CommentForm({ ticketId, number, active }: { ticketId: string; nu
         <button className="btn" disabled={pending}>
           {pending ? "Sending…" : "Send"}
         </button>
-        {state.ok && <span className="text-sm text-emerald-400">Sent</span>}
-        {state.error && <span className="whitespace-pre-wrap text-sm text-red-400">{state.error}</span>}
+        {state.ok && <span className="text-sm text-success">Sent</span>}
+        {state.error && <span className="whitespace-pre-wrap text-sm text-danger">{state.error}</span>}
       </div>
     </form>
   );
