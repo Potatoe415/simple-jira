@@ -6,6 +6,7 @@ import {
   cancelTicket,
   createSubTicket,
   createTicket,
+  deleteTicket,
   EFFORTS,
   getTicketByNumber,
   getTicketRelations,
@@ -41,7 +42,8 @@ const INSTRUCTIONS = `simple-jira turns dictated requests into tickets that Clau
 - To answer an agent's question, call answer_question with the user's answer, without rephrasing it to the point of changing its meaning.
 - To pass a clarification to an agent that is working (not blocked), call comment_ticket: it reads it before its next pass.
 - model / effort: only if the user asks for it ("use opus", "max effort"). Otherwise leave empty: the project default applies.
-- To split a big request, create the parent ticket then sub-tickets (create_sub_ticket or parent_id). blocked_by lists the tickets that must have a ready PR or be in prod before this one starts.`;
+- To split a big request, create the parent ticket then sub-tickets (create_sub_ticket or parent_id). blocked_by lists the tickets that must have a ready PR or be in prod before this one starts.
+- delete_ticket is permanent: only on the user's explicit request, after confirming the ticket number and title with them. An active ticket must be cancelled first (cancel_ticket).`;
 
 function text(value: string) {
   return { content: [{ type: "text" as const, text: value }] };
@@ -399,6 +401,27 @@ const handler = createMcpHandler(
           if (!ticket) return failure(new Error(`Ticket #${number} not found`));
           await requestMerge(db, ticket.id);
           return text(`Merge of ticket #${number} requested. The worker does it within a minute, then Vercel deploys to prod.`);
+        } catch (error) {
+          return failure(error);
+        }
+      },
+    );
+
+    server.registerTool(
+      "delete_ticket",
+      {
+        title: "Delete a ticket",
+        description:
+          "Permanently deletes a finished ticket (PR ready, in prod, failed or cancelled) with its log and questions. Refused for an active ticket (cancel it first) or one an active ticket depends on. Only on the user's explicit request, after confirmation.",
+        inputSchema: z.object({ number: z.number().int().positive() }),
+      },
+      async ({ number }) => {
+        try {
+          const db = adminDb();
+          const ticket = await getTicketByNumber(db, number);
+          if (!ticket) return failure(new Error(`Ticket #${number} not found`));
+          await deleteTicket(db, ticket.id);
+          return text(`Ticket #${number} deleted: ${ticket.title}.`);
         } catch (error) {
           return failure(error);
         }

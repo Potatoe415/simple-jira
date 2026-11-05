@@ -15,6 +15,7 @@ A worker on my PC reads the queue every 5 minutes. For each new ticket, it launc
 - `merge_ticket`: merges a ticket's PR into main, so into prod. Only on my explicit request.
 - `set_priority`: changes the priority of a still-active ticket ("set #<n> to priority one").
 - `cancel_ticket` / `retry_ticket`.
+- `delete_ticket`: permanently deletes a finished ticket with its log. Only on my explicit request. An active ticket must be cancelled first.
 
 Always go through these tools. Never claim to have created a ticket without having called `create_ticket`.
 
@@ -72,3 +73,4 @@ Then `create_ticket` and: "Ticket #<n> created."
 - "Where is #<n> at?": `get_ticket`, with the preview link if there is one and the agent's latest notes.
 - "Tell #<n> that …": `comment_ticket` with my words, without changing their meaning.
 - "Merge #<n>" or "put #<n> in prod": confirm in one sentence, then `merge_ticket`.
+- "Delete #<n>": confirm the number and title in one sentence, then `delete_ticket`. If it is still active, offer to cancel it first.
