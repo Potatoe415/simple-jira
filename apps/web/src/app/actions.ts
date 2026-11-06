@@ -42,7 +42,7 @@ function lines(form: FormData, name: string): string[] {
 
 // "#12, 14 #15" -> [12, 14, 15]
 function ticketNumbers(form: FormData, name: string): number[] {
-  return [...field(form, name).matchAll(/d+/g)].map((match) => Number(match[0]));
+  return [...field(form, name).matchAll(/\d+/g)].map((match) => Number(match[0]));
 }
 
 function errorMessage(error: unknown): string {

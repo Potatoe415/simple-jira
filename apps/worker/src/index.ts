@@ -48,9 +48,10 @@ async function requeueInterrupted() {
     .from("tickets")
     .update({ status: "queued" })
     .in("status", ["running", "verifying"])
-    .select("id, number");
+    .select("id, number, status");
   if (error) throw new Error(`requeue: ${error.message}`);
-  for (const ticket of data) {
+  // A task with sub-tasks keeps its rolled-up status (database trigger): nothing was re-queued.
+  for (const ticket of data.filter((row) => row.status === "queued")) {
     console.log(`[#${ticket.number}] re-queued after restart`);
     await addEvent(db, ticket.id, "status", "Worker restarted: ticket re-queued");
   }

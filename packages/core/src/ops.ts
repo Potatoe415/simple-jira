@@ -57,6 +57,9 @@ function isKindCheck(error: DbError): boolean {
 export const IDEAS_MIGRATION_HINT =
   "Ideas need the migration supabase/migrations/20261105150000_ideas.sql: apply it in the Supabase SQL editor.";
 
+export const HIERARCHY_MIGRATION_HINT =
+  "Tasks with sub-tasks need the migration supabase/migrations/20261106100000_task_hierarchy.sql: apply it in the Supabase SQL editor.";
+
 export const MIGRATION_HINT =
   "Apply the migration supabase/migrations/20261105090000_agent_visibility.sql in the Supabase SQL editor.";
 
@@ -252,7 +255,7 @@ export async function createTicket(db: Db, input: CreateTicketInput): Promise<Ti
     projectId = project.id;
   }
 
-  const parentId = values.parent_id !== undefined ? await resolveTicketId(db, values.parent_id) : null;
+  const parentId = values.parent_id !== undefined ? await checkParent(db, values.parent_id) : null;
   const blockedBy = [...new Set(await Promise.all(values.blocked_by.map((ref) => resolveTicketId(db, ref))))];
 
   const row: Record<string, unknown> = {
@@ -288,13 +291,72 @@ export async function createTicket(db: Db, input: CreateTicketInput): Promise<Ti
   return ticket;
 }
 
+// Project > task > sub-task: a parent must be a top-level task the worker is not already on.
+async function checkParent(db: Db, ref: string | number): Promise<string> {
+  const id = await resolveTicketId(db, ref);
+  const [{ data: parent, error }, { count, error: countError }] = await Promise.all([
+    db.from("tickets").select("number, status, parent_id, type, pr_url").eq("id", id).single(),
+    db.from("tickets").select("id", { count: "exact", head: true }).eq("parent_id", id),
+  ]);
+  if (error) fail("checkParent", error);
+  if (countError) fail("checkParent", countError);
+  const row = parent as Pick<Ticket, "number" | "status" | "parent_id" | "type" | "pr_url">;
+  if (row.parent_id) throw new Error(`#${row.number} is already a sub-task: a sub-task cannot have sub-tasks`);
+  if (row.type === "new_project") throw new Error(`#${row.number} creates a project: it cannot have sub-tasks`);
+  if (!count && ["running", "verifying", "blocked"].includes(row.status)) {
+    throw new Error(`The worker is already on #${row.number}: wait for it to finish, or cancel it first`);
+  }
+  if (!count && row.pr_url) throw new Error(`#${row.number} already has its own PR: create a new task instead`);
+  return id;
+}
+
+async function childIds(db: Db, parentId: string, statuses: readonly TicketStatus[]): Promise<string[]> {
+  const { data, error } = await db.from("tickets").select("id").eq("parent_id", parentId).in("status", [...statuses]);
+  if (error && isMissingSchema(error)) return [];
+  if (error) fail("childIds", error);
+  return (data as { id: string }[]).map((row) => row.id);
+}
+
+export interface SubtaskProgress {
+  done: number;
+  total: number;
+}
+
+// Delivered or in prod, over all sub-tasks but ideas and cancelled ones.
+export function subtaskProgress(children: Pick<Ticket, "status">[]): SubtaskProgress {
+  const counted = children.filter((child) => child.status !== "idea" && child.status !== "cancelled");
+  return {
+    done: counted.filter((child) => child.status === "delivered" || child.status === "merged").length,
+    total: counted.length,
+  };
+}
+
+// Sub-tasks of the given tasks, grouped by parent id, in creation order.
+export async function listSubtasks(db: Db, parentIds: string[]): Promise<Map<string, TicketWithProject[]>> {
+  const byParent = new Map<string, TicketWithProject[]>();
+  if (!parentIds.length) return byParent;
+  const { data, error } = await db
+    .from("tickets")
+    .select(TICKET_WITH_PROJECT)
+    .in("parent_id", parentIds)
+    .order("number");
+  if (isMissingSchema(error)) return byParent;
+  if (error) fail("listSubtasks", error);
+  for (const child of data as TicketWithProject[]) {
+    const siblings = byParent.get(child.parent_id!) ?? [];
+    siblings.push(child);
+    byParent.set(child.parent_id!, siblings);
+  }
+  return byParent;
+}
+
 // A child ticket, in the parent's project unless another project is given.
 export async function createSubTicket(
   db: Db,
   parent: string | number,
   input: Omit<CreateTicketInput, "parent_id" | "type"> & { type?: Exclude<TicketType, "new_project"> },
 ): Promise<Ticket> {
-  const parentId = await resolveTicketId(db, parent);
+  const parentId = await checkParent(db, parent);
   const { data, error } = await db.from("tickets").select("project:projects(slug)").eq("id", parentId).single();
   if (error) fail("createSubTicket", error);
   const projectSlug = (data as unknown as { project: { slug: string } | null }).project?.slug;
@@ -339,6 +401,8 @@ export interface TicketFilters {
   priority?: Priority;
   type?: TicketType;
   limit?: number;
+  // Tasks only: sub-tasks are left out (listed under their task with listSubtasks).
+  topLevel?: boolean;
 }
 
 export async function listTickets(db: Db, options: TicketFilters = {}): Promise<TicketWithProject[]> {
@@ -359,7 +423,8 @@ export async function listTickets(db: Db, options: TicketFilters = {}): Promise<
       ? query.or(`number.eq.${number},title.ilike.*${number}*`)
       : query.ilike("title", `%${search}%`);
   }
-  const { data, error } = await query;
+  const { data, error } = await (options.topLevel ? query.is("parent_id", null) : query);
+  if (options.topLevel && isMissingSchema(error)) return listTickets(db, { ...options, topLevel: false });
   if (error) fail("listTickets", error);
   return data as TicketWithProject[];
 }
@@ -460,7 +525,14 @@ export async function answerQuestion(db: Db, questionId: string, answer: string)
   return data as string;
 }
 
+// On a task with sub-tasks, acts on the sub-tasks: the task's status follows them.
 export async function cancelTicket(db: Db, ticketId: string): Promise<void> {
+  const children = await childIds(db, ticketId, ACTIVE_STATUSES);
+  if (children.length) {
+    await Promise.all(children.map((id) => cancelTicket(db, id)));
+    await addEvent(db, ticketId, "status", `${children.length} sub-task(s) cancelled`);
+    return;
+  }
   const { data, error } = await db
     .from("tickets")
     .update({ status: "cancelled", finished_at: new Date().toISOString() })
@@ -473,6 +545,12 @@ export async function cancelTicket(db: Db, ticketId: string): Promise<void> {
 }
 
 export async function retryTicket(db: Db, ticketId: string): Promise<void> {
+  const children = await childIds(db, ticketId, ["failed", "cancelled"]);
+  if (children.length) {
+    await Promise.all(children.map((id) => retryTicket(db, id)));
+    await addEvent(db, ticketId, "status", `Retry requested on ${children.length} sub-task(s)`);
+    return;
+  }
   const { data, error } = await db
     .from("tickets")
     .update({ status: "queued", error: null, finished_at: null, verify_attempts: 0 })
@@ -509,6 +587,12 @@ export async function deleteTicket(db: Db, ticketId: string): Promise<void> {
 // Turns an idea into a real task: optional details first, then into the queue.
 export async function startIdea(db: Db, ticketId: string, input: StartIdeaInput = {}): Promise<void> {
   const values = startIdeaSchema.parse(input);
+  const children = await childIds(db, ticketId, ["idea"]);
+  if (children.length) {
+    await Promise.all(children.map((id) => startIdea(db, id)));
+    await addEvent(db, ticketId, "status", `${children.length} sub-task idea(s) started`);
+    return;
+  }
   const patch = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined));
   const { data, error } = await db
     .from("tickets")
@@ -523,6 +607,8 @@ export async function startIdea(db: Db, ticketId: string, input: StartIdeaInput 
 
 export async function setPriority(db: Db, ticketId: string, priority: number): Promise<void> {
   const value = prioritySchema.parse(priority);
+  const children = await childIds(db, ticketId, ACTIVE_STATUSES);
+  await Promise.all(children.map((id) => setPriority(db, id, value)));
   const { data, error } = await db
     .from("tickets")
     .update({ priority: value })
@@ -535,6 +621,19 @@ export async function setPriority(db: Db, ticketId: string, priority: number): P
 }
 
 export async function requestMerge(db: Db, ticketId: string): Promise<void> {
+  const { data: ready, error: readyError } = await db
+    .from("tickets")
+    .select("id")
+    .eq("parent_id", ticketId)
+    .eq("status", "delivered")
+    .is("merged_at", null)
+    .is("merge_requested_at", null);
+  if (readyError && !isMissingSchema(readyError)) fail("requestMerge", readyError);
+  if (ready?.length) {
+    await Promise.all((ready as { id: string }[]).map(({ id }) => requestMerge(db, id)));
+    await addEvent(db, ticketId, "status", `Merge to prod requested on ${ready.length} sub-task(s)`);
+    return;
+  }
   const { data, error } = await db
     .from("tickets")
     .update({ merge_requested_at: new Date().toISOString() })

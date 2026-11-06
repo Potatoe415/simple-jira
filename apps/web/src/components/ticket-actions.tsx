@@ -49,7 +49,8 @@ export function TicketActions(props: Props) {
           <span className="hidden sm:inline">Preview</span>
         </a>
       ) : (
-        canMerge && (
+        canMerge &&
+        props.pr_url && (
           <span className={`${iconButton} border-line text-ink-subtlest`} title="Preview deploying">
             <EyeIcon />
             <span className="hidden sm:inline">…</span>

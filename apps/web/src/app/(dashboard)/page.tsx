@@ -2,7 +2,9 @@ import {
   ACTIVE_STATUSES,
   FINAL_STATUSES,
   listProjects,
+  listSubtasks,
   listTickets,
+  subtaskProgress,
   type TicketWithProject,
 } from "@simple-jira/core";
 import Link from "next/link";
@@ -17,16 +19,19 @@ import { adminDb } from "@/lib/supabase/admin";
 const FILTERED_LIMIT = 200;
 
 // Grey container with a title row and a white list of rows, like a sprint in a backlog.
+// With `subtasks`, each task is followed by its sub-tasks, indented.
 function Panel({
   title,
   meta,
   empty,
   tickets,
+  subtasks,
 }: {
   title: string;
   meta?: string;
   empty: string;
   tickets: TicketWithProject[];
+  subtasks?: Map<string, TicketWithProject[]>;
 }) {
   return (
     <section className="panel mb-6">
@@ -40,9 +45,17 @@ function Panel({
         </p>
       ) : (
         <ul className="issue-list">
-          {tickets.map((ticket) => (
-            <TicketRow key={ticket.id} ticket={ticket} />
-          ))}
+          {tickets.map((ticket) => {
+            const children = subtasks?.get(ticket.id) ?? [];
+            return [
+              <TicketRow
+                key={ticket.id}
+                ticket={ticket}
+                progress={children.length ? subtaskProgress(children) : undefined}
+              />,
+              ...children.map((child) => <TicketRow key={child.id} ticket={child} sub />),
+            ];
+          })}
         </ul>
       )}
     </section>
@@ -72,11 +85,19 @@ export default async function DashboardPage({
           limit: FILTERED_LIMIT,
         })
       : Promise.resolve([]),
-    filtered ? Promise.resolve([]) : listTickets(db, { statuses: ACTIVE_STATUSES, limit: 50 }),
-    filtered ? Promise.resolve([]) : listTickets(db, { statuses: FINAL_STATUSES, limit: 20 }),
+    filtered ? Promise.resolve([]) : listTickets(db, { statuses: ACTIVE_STATUSES, limit: 50, topLevel: true }),
+    filtered ? Promise.resolve([]) : listTickets(db, { statuses: FINAL_STATUSES, limit: 20, topLevel: true }),
   ]);
+  const subtasks = await listSubtasks(
+    db,
+    [...active, ...recent].map((ticket) => ticket.id),
+  );
+  // Blocked tickets live in the "Waiting for answer" view, except a task whose other sub-tasks are still moving.
+  const moving = (ticket: TicketWithProject) =>
+    ticket.status !== "blocked" ||
+    (subtasks.get(ticket.id) ?? []).some((child) => child.status !== "blocked" && ACTIVE_STATUSES.includes(child.status));
   const working = active
-    .filter((ticket) => ticket.status !== "blocked")
+    .filter(moving)
     .sort((a, b) => {
       const inProgress = Number(b.status !== "queued") - Number(a.status !== "queued");
       return inProgress || a.priority - b.priority || a.created_at.localeCompare(b.created_at);
@@ -111,6 +132,7 @@ export default async function DashboardPage({
             meta={`(${working.length} tickets)`}
             empty="Nothing in progress."
             tickets={working}
+            subtasks={subtasks}
           />
 
           <details className="panel mb-6">
@@ -122,7 +144,7 @@ export default async function DashboardPage({
             </div>
           </details>
 
-          <Panel title="Recently finished" meta={`(${recent.length} tickets)`} empty="No finished tickets." tickets={recent} />
+          <Panel title="Recently finished" meta={`(${recent.length} tickets)`} empty="No finished tickets." tickets={recent} subtasks={subtasks} />
         </>
       )}
     </main>

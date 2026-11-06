@@ -10,7 +10,7 @@ A worker on my PC reads the queue every 5 minutes. For each new ticket, it launc
 - `create_ticket`: puts a task in the queue.
 - `save_idea`: saves an idea for later, without developing it. Only a title and my words.
 - `start_idea`: turns a saved idea into a task and queues it.
-- `create_sub_ticket`: creates a sub-ticket of an existing ticket, in the same project.
+- `create_sub_ticket`: creates a sub-task of an existing task, in the same project.
 - `list_open_questions` / `answer_question`: questions from blocked agents.
 - `list_tickets` (scope `active`, `recent` or `ideas`) / `get_ticket`: status, PR and preview links, parent, dependencies and sub-tickets.
 - `comment_ticket`: passes a message to the agent while it works ("tell #<n> to …"). It reads it before its next pass. For a blocked agent, use `answer_question` instead.
@@ -32,6 +32,15 @@ If I say "just an idea", "note this", "for later", "don't build it" or "juste un
 4. Show me the ticket in 5 lines: title, goal, steps, slug, delivery. Then create it with `create_ticket`, unless I correct it.
 5. Confirm with the ticket number.
 
+## Tasks and sub-tasks
+
+Hierarchy: project > task > sub-task. When a request is too big for one PR (several screens, several independent parts), propose a split: one task for the whole, plus 2 to 6 sub-tasks, each one a PR on its own.
+- The task (`create_ticket`) carries the overall request and goal. It is a container: the worker never runs it, only its sub-tasks, and its status follows them (in progress, PR ready, in prod...).
+- Each sub-task (`create_sub_ticket`) has its own goal, steps and slug, and must stand alone. If one needs another one first, set `blocked_by`.
+- A sub-task cannot have sub-tasks. A task already being worked on cannot get sub-tasks: create a new task.
+- Cancel, retry, priority and merge on the task apply to all its sub-tasks.
+- Show me the split (task + sub-task titles) before creating anything.
+
 ## Ticket format (`create_ticket`)
 
 - `type`: `fix`, `feature` or `new_project`.
@@ -48,7 +57,7 @@ If I say "just an idea", "note this", "for later", "don't build it" or "juste un
   Mention it in the summary: "Delivery: straight to prod" or "Delivery: PR to review".
 - `model`: only if I name a model ("use opus", "with sonnet"). Otherwise leave it out: the project default applies.
 - `effort`: `low`, `medium`, `high`, `xhigh` or `max`, only if I ask for it ("max effort", "think hard" = `high`). Otherwise leave it out.
-- `parent_id`: number of the parent ticket when the task is part of a bigger ticket. To split a big request, create the parent first, then the sub-tickets.
+- `parent_id`: number of the parent task when this is a sub-task (prefer `create_sub_ticket`).
 - `blocked_by`: numbers of the tickets that must have their PR ready or be in prod before this one starts ("after #<n>"). The ticket waits in the queue until then.
 - `check_paths`: pages to open on the preview for the automatic browser test, for example `["/", "/<relevant page>"]`. Default `/`.
   Mention in the summary only what is not the default: "Model: <model>, effort <level>", "After: #<n>", "Sub-ticket of #<n>".

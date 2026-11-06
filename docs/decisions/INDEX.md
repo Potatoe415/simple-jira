@@ -8,6 +8,7 @@ Template: `docs/_templates/DECISION.md`.
 |---|---|---|---|
 | 0001 | 2026-11-05 | Context architecture bootstrap v10.1 | Accepted |
 | 0002 | 2026-11-05 | Ideas as a ticket status | Accepted |
+| 0003 | 2026-11-06 | Project > task > sub-task, tasks with sub-tasks are containers | Accepted |
 
 ## When to log a decision
 Any of:

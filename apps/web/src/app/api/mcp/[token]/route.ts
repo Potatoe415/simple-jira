@@ -15,12 +15,14 @@ import {
   listOpenQuestions,
   listProjects,
   listQuestions,
+  listSubtasks,
   listTickets,
   requestMerge,
   retryTicket,
   setPriority,
   startIdea,
   STATUS_LABELS,
+  subtaskProgress,
   TICKET_TYPES,
   TYPE_LABELS,
   type TicketWithProject,
@@ -43,7 +45,8 @@ const INSTRUCTIONS = `simple-jira turns dictated requests into tickets that Clau
 - To answer an agent's question, call answer_question with the user's answer, without rephrasing it to the point of changing its meaning.
 - To pass a clarification to an agent that is working (not blocked), call comment_ticket: it reads it before its next pass.
 - model / effort: only if the user asks for it ("use opus", "max effort"). Otherwise leave empty: the project default applies.
-- To split a big request, create the parent ticket then sub-tickets (create_sub_ticket or parent_id). blocked_by lists the tickets that must have a ready PR or be in prod before this one starts.
+- Hierarchy: project > task > sub-task. To split a big request, create the task (create_ticket), then its sub-tasks (create_sub_ticket). A task with sub-tasks is a container: the worker never runs it, only its sub-tasks, and its status follows them. Put all the work in the sub-tasks; the task's description is the overall context. Sub-tasks cannot have sub-tasks. Sub-tasks run independently: if one needs another first, set blocked_by. Cancel, retry, priority and merge on the task apply to its sub-tasks.
+- blocked_by lists the tickets that must have a ready PR or be in prod before this one starts.
 - Ideas: when the user says "just an idea", "note this", "for later", "don't build it", "juste une idée" or equivalent, call save_idea instead of create_ticket. No questions, goal or steps needed: keep their words. An idea is never developed until started.
 - To start an idea ("start idea #12", "build idea #12"), call get_ticket, clarify what is missing like for a new ticket, then start_idea with goal, steps and slug.
 - delete_ticket is permanent: only on the user's explicit request, after confirming the ticket number and title with them. An active ticket must be cancelled first (cancel_ticket).`;
@@ -166,7 +169,7 @@ const handler = createMcpHandler(
       {
         title: "Create a sub-ticket",
         description:
-          "Creates a child ticket of an existing ticket, in the same project. Same format as create_ticket (goal, steps, slug...).",
+          "Creates a sub-task of an existing task, in the same project. Same format as create_ticket (goal, steps, slug...). The parent task becomes a container the worker does not run itself. A sub-task cannot have sub-tasks.",
         inputSchema: z.object({
           parent: z.number().int().positive().describe("parent ticket number"),
           type: z.enum(["fix", "feature"]).default("feature"),
@@ -366,7 +369,21 @@ const handler = createMcpHandler(
           if (!tickets.length) {
             return text(scope === "active" ? "No active tickets." : scope === "ideas" ? "No saved ideas." : "No tickets.");
           }
-          return text(tickets.map(ticketLine).join("\n"));
+          // Sub-tasks go under their task when both are listed.
+          const listed = new Set(tickets.map((ticket) => ticket.id));
+          const subtasks = await listSubtasks(adminDb(), [...listed]);
+          return text(
+            tickets
+              .filter((ticket) => !ticket.parent_id || !listed.has(ticket.parent_id))
+              .flatMap((ticket) => {
+                const children = subtasks.get(ticket.id) ?? [];
+                if (!children.length) return [ticketLine(ticket)];
+                const { done, total } = subtaskProgress(children);
+                const shown = children.filter((child) => listed.has(child.id)).map((child) => `  ↳ ${ticketLine(child)}`);
+                return [`${ticketLine(ticket)} — ${done}/${total} sub-tasks done`, ...shown];
+              })
+              .join("\n"),
+          );
         } catch (error) {
           return failure(error);
         }
@@ -397,7 +414,10 @@ const handler = createMcpHandler(
             `#${r.number} [${STATUS_LABELS[r.status]}] ${r.title}`;
           if (relations.parent) parts.push(`Parent: ${ref(relations.parent)}`);
           if (relations.blockers.length) parts.push(`Depends on: ${relations.blockers.map(ref).join(" ; ")}`);
-          if (relations.children.length) parts.push(`Sub-tickets: ${relations.children.map(ref).join(" ; ")}`);
+          if (relations.children.length) {
+            const { done, total } = subtaskProgress(relations.children);
+            parts.push(`Sub-tasks (${done}/${total} done): ${relations.children.map(ref).join(" ; ")}`);
+          }
           if (ticket.summary) parts.push(`Summary:\n${ticket.summary}`);
           if (ticket.error) parts.push(`Error: ${ticket.error}`);
           if (questions.length) {

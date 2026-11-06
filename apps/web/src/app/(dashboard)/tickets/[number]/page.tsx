@@ -5,6 +5,7 @@ import {
   listEvents,
   listQuestions,
   STATUS_LABELS,
+  subtaskProgress,
   TYPE_LABELS,
   type TicketEvent,
   type TicketRef,
@@ -70,6 +71,7 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
   const waiting = relations.blockers.filter((b) => b.status !== "delivered" && b.status !== "merged");
   const isActive = ACTIVE_STATUSES.includes(ticket.status);
   const canRetry = ticket.status === "failed" || ticket.status === "cancelled";
+  const progress = relations.children.length ? subtaskProgress(relations.children) : null;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-6">
@@ -187,7 +189,7 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
         <section className="card mb-4 space-y-3 text-sm">
           {relations.parent && (
             <div>
-              <h2 className="label">Parent ticket</h2>
+              <h2 className="label">Parent task</h2>
               <RefLink ticket={relations.parent} />
             </div>
           )}
@@ -210,7 +212,14 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
           )}
           {relations.children.length > 0 && (
             <div>
-              <h2 className="label">Sub-tickets</h2>
+              <h2 className="label">
+                Sub-tasks{" "}
+                {progress && (
+                  <span className="normal-case text-ink-subtlest">
+                    ({progress.done}/{progress.total} done; this task runs only through its sub-tasks)
+                  </span>
+                )}
+              </h2>
               <ul className="space-y-1">
                 {relations.children.map((child) => (
                   <li key={child.id}>
