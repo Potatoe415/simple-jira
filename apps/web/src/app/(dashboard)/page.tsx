@@ -10,7 +10,6 @@ import {
 import Link from "next/link";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { TicketFilters } from "@/components/ticket-filters";
-import { CreateTicketPanel } from "@/components/create-ticket-panel";
 import { TicketRow } from "@/components/ticket-row";
 import { requireOwner } from "@/lib/auth";
 import { effectiveStatuses, hasFilters, parseFilters, VIEWS } from "@/lib/filters";
@@ -119,15 +118,12 @@ export default async function DashboardPage({
       <TicketFilters filters={filters} projects={projectOptions} count={filtered ? results.length : active.length + recent.length} />
 
       {filtered ? (
-        <>
-        {filters.view === "ideas" && <CreateTicketPanel projects={projectOptions} />}
         <Panel
           title={title}
           meta={`(${results.length}${results.length === FILTERED_LIMIT ? "+" : ""} tickets)`}
           empty="No matching tickets."
           tickets={results}
         />
-        </>
       ) : (
         <>
           <Panel
@@ -138,7 +134,6 @@ export default async function DashboardPage({
             subtasks={subtasks}
           />
 
-          <CreateTicketPanel projects={projectOptions} />
 
           <Panel title="Recently finished" meta={`(${recent.length} tickets)`} empty="No finished tickets." tickets={recent} subtasks={subtasks} />
         </>

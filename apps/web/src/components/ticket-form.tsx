@@ -1,52 +1,95 @@
 "use client";
 
-import { EFFORTS } from "@simple-jira/core";
+import { EFFORTS, STATUS_LABELS, type ParentCandidate } from "@simple-jira/core";
 import { useActionState, useState } from "react";
 import { createTicketAction } from "@/app/actions";
 
 const NEW_PROJECT = "__new__";
 
-export interface TicketFormDefaults {
-  project?: string;
-  parent?: number;
-}
+export type TicketKind = "task" | "subtask" | "idea";
 
-// `idea`: the short form (project, title, description) that saves an idea. `defaults.parent`: a sub-task form.
+// task: the full form. idea: project, title, description only. subtask: the full form under a chosen parent task,
+// in that task's project.
 export function TicketForm({
+  kind,
   projects,
-  idea = false,
-  defaults = {},
+  parents = [],
+  defaultParent,
 }: {
+  kind: TicketKind;
   projects: { slug: string; name: string }[];
-  idea?: boolean;
-  defaults?: TicketFormDefaults;
+  parents?: ParentCandidate[];
+  defaultParent?: number;
 }) {
   const [state, action, pending] = useActionState(createTicketAction, {});
-  const [project, setProject] = useState(defaults.project ?? projects[0]?.slug ?? NEW_PROJECT);
+  const isSub = kind === "subtask";
+  const idea = kind === "idea";
+  const [parent, setParent] = useState(defaultParent ?? parents[0]?.number);
+  const parentProject = parents.find((candidate) => candidate.number === parent)?.project;
+  const [chosenProject, setProject] = useState(projects[0]?.slug ?? NEW_PROJECT);
+  const project = isSub ? (parentProject?.slug ?? "") : chosenProject;
   const isNew = project === NEW_PROJECT;
-  const isSub = defaults.parent !== undefined;
+
+  if (isSub && !parents.length) {
+    return (
+      <p className="rounded-[3px] bg-sunken px-3 py-4 text-center text-ink-subtle">
+        No task can take a sub-task right now. Create a task first: a sub-task goes under a task that is queued, an idea,
+        or already split.
+      </p>
+    );
+  }
 
   return (
     <form action={action} className="space-y-3">
+      {isSub && (
+        <div>
+          <label className="label" htmlFor="parent">
+            Parent task
+          </label>
+          <select
+            id="parent"
+            name="parent"
+            className="input"
+            value={parent}
+            onChange={(event) => setParent(Number(event.target.value))}
+          >
+            {parents.map((candidate) => (
+              <option key={candidate.number} value={candidate.number}>
+                #{candidate.number} {candidate.title} ({candidate.project.name}, {STATUS_LABELS[candidate.status]})
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-ink-subtlest">
+            The worker then runs only the sub-tasks; the parent task follows their status.
+          </p>
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="project">
             Project
           </label>
-          <select
-            id="project"
-            name="project"
-            className="input"
-            value={project}
-            onChange={(event) => setProject(event.target.value)}
-          >
-            {projects.map((p) => (
-              <option key={p.slug} value={p.slug}>
-                {p.name}
-              </option>
-            ))}
-            {!isSub && <option value={NEW_PROJECT}>+ New project</option>}
-          </select>
+          {isSub ? (
+            <>
+              <input type="hidden" name="project" value={project} />
+              <p className="input bg-sunken hover:bg-sunken">{parentProject?.name ?? "?"}</p>
+            </>
+          ) : (
+            <select
+              id="project"
+              name="project"
+              className="input"
+              value={project}
+              onChange={(event) => setProject(event.target.value)}
+            >
+              {projects.map((p) => (
+                <option key={p.slug} value={p.slug}>
+                  {p.name}
+                </option>
+              ))}
+              <option value={NEW_PROJECT}>+ New project</option>
+            </select>
+          )}
         </div>
         {!isNew && (
           <div>
@@ -152,14 +195,6 @@ export function TicketForm({
               ))}
             </select>
           </div>
-          {!isSub && (
-            <div>
-              <label className="label" htmlFor="parent">
-                Parent task
-              </label>
-              <input id="parent" name="parent" className="input" placeholder="#12" />
-            </div>
-          )}
           <div>
             <label className="label" htmlFor="blocked_by">
               Depends on
@@ -180,7 +215,6 @@ export function TicketForm({
       </label>
         </>
       )}
-      {isSub && <input type="hidden" name="parent" value={defaults.parent} />}
       <div className="flex items-center gap-3">
         <button className="btn" disabled={pending}>
           {pending ? "Saving…" : idea ? "Save idea" : isSub ? "Add sub-task" : "Queue it"}

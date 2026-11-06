@@ -350,6 +350,34 @@ export async function listSubtasks(db: Db, parentIds: string[]): Promise<Map<str
   return byParent;
 }
 
+export type ParentCandidate = Pick<Ticket, "number" | "title" | "status"> & {
+  project: Pick<Project, "slug" | "name">;
+};
+
+// Tasks that can take a new sub-task (same rules as checkParent): containers still in progress,
+// and plain ideas or queued tasks the worker has not started.
+export async function listParentCandidates(db: Db): Promise<ParentCandidate[]> {
+  const { data, error } = await db
+    .from("tickets")
+    .select("id, number, title, status, pr_url, project:projects(slug, name)")
+    .is("parent_id", null)
+    .neq("type", "new_project")
+    .in("status", ["idea", ...ACTIVE_STATUSES])
+    .order("number", { ascending: false })
+    .limit(100);
+  if (isMissingSchema(error)) return [];
+  if (error) fail("listParentCandidates", error);
+  const rows = data as unknown as (ParentCandidate & { id: string; pr_url: string | null })[];
+  const children = await listSubtasks(
+    db,
+    rows.map((row) => row.id),
+  );
+  return rows
+    .filter((row) => row.project)
+    .filter((row) => children.has(row.id) || (!row.pr_url && (row.status === "idea" || row.status === "queued")))
+    .map(({ number, title, status, project }) => ({ number, title, status, project }));
+}
+
 // A child ticket, in the parent's project unless another project is given.
 export async function createSubTicket(
   db: Db,

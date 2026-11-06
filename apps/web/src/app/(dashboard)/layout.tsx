@@ -4,6 +4,7 @@ import {
   getWorkerStatus,
   isWorkerOnline,
   listOpenQuestions,
+  listParentCandidates,
   listProjects,
 } from "@simple-jira/core";
 import { Suspense } from "react";
@@ -23,11 +24,12 @@ const VIEW_TONES: Partial<Record<View, "amber" | "red" | "teal" | "emerald">> = 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   await requireOwner();
   const db = adminDb();
-  const [counts, projects, worker, questions] = await Promise.all([
+  const [counts, projects, worker, questions, parents] = await Promise.all([
     getTicketCounts(db),
     listProjects(db),
     getWorkerStatus(db),
     listOpenQuestions(db),
+    listParentCandidates(db),
   ]);
   const online = isWorkerOnline(worker);
 
@@ -68,7 +70,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <>
-      <Header questions={questions} />
+      <Header
+        questions={questions}
+        projects={projects.map(({ slug, name }) => ({ slug, name }))}
+        parents={parents}
+      />
       <div className="lg:flex">
         <Suspense>
           <SidePanel
