@@ -25,7 +25,8 @@ One owner. Dashboard access is limited to the single account in `OWNER_EMAIL`.
 - Live agent journal per ticket (timeline polled every few seconds); worker heartbeat and online status.
 - Owner comments on a running ticket, read by the agent before its next pass (dashboard or MCP `comment_ticket`).
 - Project memory: learnings saved per project when a ticket is delivered.
-- Model and effort per ticket (project defaults), sub-tickets (`parent_id`) and dependencies (`blocked_by`).
+- Model and effort per ticket (project defaults) and dependencies (`blocked_by`).
+- Project > task > sub-task: a task with sub-tasks is a container, run through its sub-tasks; its status and a done/total counter follow them (decision 0003).
 - Browser check of the preview with screenshots, posted on the PR.
 - Notifications (ntfy-style URL): PR ready, question, failure, merge.
 - Dashboard side panel and ticket filters.
