@@ -47,7 +47,7 @@ export function Header({ questions }: { questions: OpenQuestion[] }) {
       </nav>
       <div className="ml-auto flex items-center gap-3">
         <AlertsMenu questions={questions} blockedHref={filtersHref({ view: "questions" })} />
-        <span className="hidden rounded-[3px] bg-tint px-1.5 py-0.5 font-mono text-xs text-ink-subtle sm:inline">v0.01</span>
+        <span className="hidden rounded-[3px] bg-tint px-1.5 py-0.5 font-mono text-xs text-ink-subtle sm:inline">v0.0.2</span>
         <form action={signOutAction}>
           <button className={navLink}>Sign out</button>
         </form>
