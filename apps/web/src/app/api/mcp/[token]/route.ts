@@ -45,7 +45,8 @@ const INSTRUCTIONS = `simple-jira turns dictated requests into tickets that Clau
 - To answer an agent's question, call answer_question with the user's answer, without rephrasing it to the point of changing its meaning.
 - To pass a clarification to an agent that is working (not blocked), call comment_ticket: it reads it before its next pass.
 - model / effort: only if the user asks for it ("use opus", "max effort"). Otherwise leave empty: the project default applies.
-- Hierarchy: project > task > sub-task. To split a big request, create the task (create_ticket), then its sub-tasks (create_sub_ticket). A task with sub-tasks is a container: the worker never runs it, only its sub-tasks, and its status follows them. Put all the work in the sub-tasks; the task's description is the overall context. Sub-tasks cannot have sub-tasks. Sub-tasks run independently: if one needs another first, set blocked_by. Cancel, retry, priority and merge on the task apply to its sub-tasks.
+- By default, one request = one task: call create_ticket and the worker runs it directly. Never split a request and never propose a split on your own. Use sub-tasks only when the user explicitly asks for them ("split it", "sub-tasks", "découpe", "sous-tâches").
+- Hierarchy (only on request): project > task > sub-task. Create the task (create_ticket), then its sub-tasks (create_sub_ticket). A task with sub-tasks is a container: the worker never runs it, only its sub-tasks, and its status follows them. Put all the work in the sub-tasks; the task's description is the overall context. Sub-tasks cannot have sub-tasks. Sub-tasks run independently: if one needs another first, set blocked_by. Cancel, retry, priority and merge on the task apply to its sub-tasks.
 - blocked_by lists the tickets that must have a ready PR or be in prod before this one starts.
 - Ideas: when the user says "just an idea", "note this", "for later", "don't build it", "juste une idée" or equivalent, call save_idea instead of create_ticket. No questions, goal or steps needed: keep their words. An idea is never developed until started.
 - To start an idea ("start idea #12", "build idea #12"), call get_ticket, clarify what is missing like for a new ticket, then start_idea with goal, steps and slug.
@@ -169,7 +170,7 @@ const handler = createMcpHandler(
       {
         title: "Create a sub-ticket",
         description:
-          "Creates a sub-task of an existing task, in the same project. Same format as create_ticket (goal, steps, slug...). The parent task becomes a container the worker does not run itself. A sub-task cannot have sub-tasks.",
+          "Only when the user explicitly asks for sub-tasks. Creates a sub-task of an existing task, in the same project. Same format as create_ticket (goal, steps, slug...). The parent task becomes a container the worker does not run itself. A sub-task cannot have sub-tasks.",
         inputSchema: z.object({
           parent: z.number().int().positive().describe("parent ticket number"),
           type: z.enum(["fix", "feature"]).default("feature"),

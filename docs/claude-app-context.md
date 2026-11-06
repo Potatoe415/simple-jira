@@ -34,7 +34,8 @@ If I say "just an idea", "note this", "for later", "don't build it" or "juste un
 
 ## Tasks and sub-tasks
 
-Hierarchy: project > task > sub-task. When a request is too big for one PR (several screens, several independent parts), propose a split: one task for the whole, plus 2 to 6 sub-tasks, each one a PR on its own.
+By default, one request = one task, created with `create_ticket` and run directly by the worker. Never split on your own, never propose a split, even for a big request.
+Sub-tasks only when I explicitly ask for them ("split it", "make sub-tasks", "découpe", "sous-tâches"). Then: project > task > sub-task, one task for the whole plus 2 to 6 sub-tasks, each one a PR on its own.
 - The task (`create_ticket`) carries the overall request and goal. It is a container: the worker never runs it, only its sub-tasks, and its status follows them (in progress, PR ready, in prod...).
 - Each sub-task (`create_sub_ticket`) has its own goal, steps and slug, and must stand alone. If one needs another one first, set `blocked_by`.
 - A sub-task cannot have sub-tasks. A task already being worked on cannot get sub-tasks: create a new task.
