@@ -6,10 +6,25 @@ import { createTicketAction } from "@/app/actions";
 
 const NEW_PROJECT = "__new__";
 
-export function TicketForm({ projects }: { projects: { slug: string; name: string }[] }) {
+export interface TicketFormDefaults {
+  project?: string;
+  parent?: number;
+}
+
+// `idea`: the short form (project, title, description) that saves an idea. `defaults.parent`: a sub-task form.
+export function TicketForm({
+  projects,
+  idea = false,
+  defaults = {},
+}: {
+  projects: { slug: string; name: string }[];
+  idea?: boolean;
+  defaults?: TicketFormDefaults;
+}) {
   const [state, action, pending] = useActionState(createTicketAction, {});
-  const [project, setProject] = useState(projects[0]?.slug ?? NEW_PROJECT);
+  const [project, setProject] = useState(defaults.project ?? projects[0]?.slug ?? NEW_PROJECT);
   const isNew = project === NEW_PROJECT;
+  const isSub = defaults.parent !== undefined;
 
   return (
     <form action={action} className="space-y-3">
@@ -30,7 +45,7 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
                 {p.name}
               </option>
             ))}
-            <option value={NEW_PROJECT}>+ New project</option>
+            {!isSub && <option value={NEW_PROJECT}>+ New project</option>}
           </select>
         </div>
         {!isNew && (
@@ -86,9 +101,13 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
           required
           rows={4}
           className="input"
-          placeholder="What is wrong, or what you want. As you would say it out loud."
+          placeholder={idea ? "The idea, in your words." : "What is wrong, or what you want. As you would say it out loud."}
         />
       </div>
+      {idea ? (
+        <input type="hidden" name="idea" value="on" />
+      ) : (
+        <>
       <div>
         <label className="label" htmlFor="goal">
           Goal (&quot;done&quot; =)
@@ -133,12 +152,14 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
               ))}
             </select>
           </div>
-          <div>
-            <label className="label" htmlFor="parent">
-              Parent ticket
-            </label>
-            <input id="parent" name="parent" className="input" placeholder="#12" />
-          </div>
+          {!isSub && (
+            <div>
+              <label className="label" htmlFor="parent">
+                Parent task
+              </label>
+              <input id="parent" name="parent" className="input" placeholder="#12" />
+            </div>
+          )}
           <div>
             <label className="label" htmlFor="blocked_by">
               Depends on
@@ -157,13 +178,12 @@ export function TicketForm({ projects }: { projects: { slug: string; name: strin
         <input type="checkbox" name="auto_merge" defaultChecked className="h-4 w-4 accent-[#22a06b]" />
         Straight to prod (auto-merge as soon as the PR is ready)
       </label>
-      <label className="flex items-center gap-2 text-sm text-ink">
-        <input type="checkbox" name="idea" className="h-4 w-4 accent-brand" />
-        Just an idea (saved for later, not developed until you start it)
-      </label>
+        </>
+      )}
+      {isSub && <input type="hidden" name="parent" value={defaults.parent} />}
       <div className="flex items-center gap-3">
         <button className="btn" disabled={pending}>
-          {pending ? "Creating…" : "Queue it"}
+          {pending ? "Saving…" : idea ? "Save idea" : isSub ? "Add sub-task" : "Queue it"}
         </button>
         {state.error && <span className="whitespace-pre-wrap text-sm text-danger">{state.error}</span>}
       </div>

@@ -16,6 +16,7 @@ import { cancelTicketAction, retryTicketAction, setPriorityAction, startIdeaActi
 import { AnswerForm } from "@/components/answer-form";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { CommentForm } from "@/components/comment-form";
+import { CreateTicketPanel } from "@/components/create-ticket-panel";
 import { StatusBadge } from "@/components/status-badge";
 import { Timeline } from "@/components/timeline";
 import { TicketActions } from "@/components/ticket-actions";
@@ -53,6 +54,10 @@ function RefLink({ ticket }: { ticket: TicketRef }) {
   );
 }
 
+function AddSubtask({ number, project }: { number: number; project: { slug: string; name: string } }) {
+  return <CreateTicketPanel projects={[project]} defaults={{ project: project.slug, parent: number }} subtaskOnly />;
+}
+
 export default async function TicketPage({ params }: { params: Promise<{ number: string }> }) {
   await requireOwner();
   const { number } = await params;
@@ -72,6 +77,13 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
   const isActive = ACTIVE_STATUSES.includes(ticket.status);
   const canRetry = ticket.status === "failed" || ticket.status === "cancelled";
   const progress = relations.children.length ? subtaskProgress(relations.children) : null;
+  // Same rules as checkParent in packages/core: a top-level task the worker is not on and that has no PR of its own.
+  const canAddSubtask =
+    !ticket.parent_id &&
+    ticket.type !== "new_project" &&
+    !!ticket.project &&
+    (relations.children.length > 0 ||
+      (!ticket.pr_url && !["running", "verifying", "blocked"].includes(ticket.status)));
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-6">
@@ -230,6 +242,10 @@ export default async function TicketPage({ params }: { params: Promise<{ number:
             </div>
           )}
         </section>
+      )}
+
+      {canAddSubtask && ticket.project && (
+        <AddSubtask number={ticket.number} project={ticket.project} />
       )}
 
       <section className="card mb-4">
